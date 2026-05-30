@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>myLibrary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+
+    <div class="topbar">
+      <div class="lib-title">myLibrary</div>
+      <div class="lib-sub">Nana Adjoa's Library</div>
+    </div>
+
+    <div class="canvas">
+      <!-- GRID VIEW -->
+      <div id="grid-sections">
+        <div class="grid" id="grid-books"></div>
+      </div>
+
+      <!-- SHELF VIEW -->
+      <div id="shelf-sections" style="display:none;">
+        <div id="shelf-rows"></div>
+      </div>
+    </div>
+
+    <!-- FLOATING NAV -->
+    <div class="floating-nav">
+      <div class="nav-count" id="book-count">0 Books</div>
+      <div class="nav-divider"></div>
+      <input class="search-input" type="text" placeholder="Search book" />
+      <div class="filter-wrapper"><button class="nav-btn" id="filter-btn" onclick="toggleFilter()">Filter</button><div class="filter-dropdown" id="filter-dropdown"></div></div>
+      <button class="nav-add" onclick="openModal()">Add book</button>
+      <div class="nav-divider"></div>
+      <div class="toggle-group">
+        <button class="nav-btn active" id="btn-grid" onclick="setView('grid', this)">Grid</button>
+        <button class="nav-btn" id="btn-shelf" onclick="setView('shelf', this)">Shelf</button>
+      </div>
+      <button class="nav-share">Share library</button>
+      <div class="avatar">NA</div>
+    </div>
+
+  </div>
+
+  <!-- BOOK FOCUS OVERLAY -->
+  <div class="book-focus-overlay" id="book-focus-overlay">
+    <div class="book-focus-wrapper">
+
+      <!-- floating cover — lives outside the card -->
+      <div class="book-focus-cover-float" id="focus-cover"></div>
+
+      <!-- the card -->
+      <div class="book-focus-card" id="focus-card">
+        <div class="book-focus-top">
+          <div class="book-focus-meta">
+            <div class="book-focus-title" id="focus-title"></div>
+            <div class="book-focus-author" id="focus-author"></div>
+            <div class="book-focus-shelf" id="focus-shelf"></div>
+            <div class="book-focus-rating" id="focus-stars"></div>
+          </div>
+        </div>
+        <div class="book-focus-body">
+          <div>
+            <div class="focus-field-label">Notes</div>
+            <div class="focus-notes" id="focus-notes"></div>
+          </div>
+        </div>
+        <div class="book-focus-footer">
+          <button class="btn-close-focus" onclick="closeFocus()">Close</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADD BOOK MODAL -->
+  <div class="modal-overlay" id="add-book-modal">
+    <div class="modal">
+      <!-- SEARCH VIEW -->
+      <div id="modal-search-view" class="modal-search-view">
+        <div class="modal-header">
+          <div class="modal-title">Add a book</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="search-bar">
+          <input id="book-search-input" type="text" placeholder="Search book" autocomplete="off" />
+        </div>
+        <div class="search-results-label" id="results-label" style="display:none;">Search results</div>
+        <div class="search-results" id="search-results">
+          <div class="search-empty" id="search-empty" style="display:none;">No books found. Try a different search.</div>
+        </div>
+        <div class="modal-search-footer">
+          <button class="btn-add-details" id="btn-add-details" onclick="showDetailView()">Add details</button>
+        </div>
+      </div>
+
+      <!-- DETAIL VIEW -->
+      <div id="modal-detail-view" class="modal-detail-view" style="display:none;">
+        <div class="modal-header">
+          <div class="modal-title">Add to library</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="detail-book-info">
+          <div class="detail-cover" id="detail-cover"></div>
+          <div class="detail-meta">
+            <div class="detail-title" id="detail-title"></div>
+            <div class="detail-author" id="detail-author"></div>
+          </div>
+        </div>
+        <div class="detail-fields">
+          <div>
+            <div class="field-label">Rating</div>
+            <div class="stars">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Add to shelf</div>
+            <select class="shelf-select" id="shelf-select">
+              <option value="" disabled selected>Choose a shelf…</option>
+              <option value="Fiction">Fiction</option>
+              <option value="Nonfiction">Nonfiction</option>
+              <option value="Design">Design</option>
+              <option value="Self-help">Self-help</option>
+              <option value="Poetry">Poetry</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">Notes</div>
+            <textarea class="notes-input" id="book-notes" placeholder="Your thoughts on this book…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-back" onclick="goBackToSearch()">← Back</button>
+          <button class="btn-save" onclick="saveBook()">Add to library</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
