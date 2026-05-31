@@ -41,7 +41,8 @@
         <button class="nav-btn" id="btn-shelf" onclick="setView('shelf', this)">Shelf</button>
       </div>
       <button class="nav-share">Share library</button>
-      <div class="avatar">NA</div>
+      <div class="nav-divider"></div>
+      <div class="avatar" onclick="openProfile()">NA</div>
     </div>
 
   </div>
@@ -49,11 +50,7 @@
   <!-- BOOK FOCUS OVERLAY -->
   <div class="book-focus-overlay" id="book-focus-overlay">
     <div class="book-focus-wrapper">
-
-      <!-- floating cover — lives outside the card -->
       <div class="book-focus-cover-float" id="focus-cover"></div>
-
-      <!-- the card -->
       <div class="book-focus-card" id="focus-card">
         <div class="book-focus-top">
           <div class="book-focus-meta">
@@ -73,7 +70,6 @@
           <button class="btn-close-focus" onclick="closeFocus()">Close</button>
         </div>
       </div>
-
     </div>
   </div>
 
@@ -142,6 +138,57 @@
           <button class="btn-back" onclick="goBackToSearch()">← Back</button>
           <button class="btn-save" onclick="saveBook()">Add to library</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal modal--profile">
+      <div class="modal-header">
+        <div class="modal-title">Profile</div>
+        <button class="modal-close" onclick="closeProfile()">✕</button>
+      </div>
+      <div class="profile-body">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profile-avatar-display">NA</div>
+          <button class="profile-avatar-edit" onclick="triggerAvatarUpload()">Change photo</button>
+          <input type="file" id="avatar-upload" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)" />
+        </div>
+        <div class="profile-fields">
+          <div class="profile-field">
+            <div class="field-label">Name</div>
+            <input class="profile-input" id="profile-name" type="text" value="Nana Adjoa" />
+          </div>
+          <div class="profile-field">
+            <div class="field-label">Library name</div>
+            <input class="profile-input" id="profile-library-name" type="text" value="Nana Adjoa's Library" />
+          </div>
+          <div class="profile-field">
+            <div class="field-label">Bio</div>
+            <textarea class="notes-input profile-bio" id="profile-bio" placeholder="A few words about your reading life…"></textarea>
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="stat-books">0</div>
+            <div class="profile-stat-label">Books</div>
+          </div>
+          <div class="profile-stat-divider"></div>
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="stat-shelves">0</div>
+            <div class="profile-stat-label">Shelves</div>
+          </div>
+          <div class="profile-stat-divider"></div>
+          <div class="profile-stat">
+            <div class="profile-stat-num" id="stat-rated">0</div>
+            <div class="profile-stat-label">Rated</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-back" onclick="closeProfile()">Cancel</button>
+        <button class="btn-save" onclick="saveProfile()">Save changes</button>
       </div>
     </div>
   </div>
