@@ -5,7 +5,25 @@ function initializeAuthState() {
   const storedUser = localStorage.getItem('myLibrary_user');
   if (storedUser) {
     currentUser = JSON.parse(storedUser);
-    showLibraryPage();
+    // load user's saved books if present
+    try {
+      const storedBooksKey = `myLibrary_books_${currentUser.id}`;
+      const storedBooks = localStorage.getItem(storedBooksKey);
+      if (storedBooks) {
+        const parsed = JSON.parse(storedBooks);
+        if (Array.isArray(parsed)) {
+          books.length = 0;
+          parsed.forEach(b => books.push(b));
+        }
+      } else {
+        // no stored books for this user yet: treat as new user (empty library)
+        books.length = 0;
+        try { localStorage.setItem(storedBooksKey, JSON.stringify([])); } catch (e) {}
+      }
+    } catch (e) {
+      /* ignore and fall back to demo books */
+    }
+    updatePageState();
   } else {
     showOnboarding();
   }
@@ -57,6 +75,8 @@ function onGoogleSignIn(response) {
     };
     localStorage.setItem('myLibrary_user', JSON.stringify(currentUser));
     books.length = 0; // Clear demo books for new user
+    // persist an empty book list for this new user
+    try { localStorage.setItem(`myLibrary_books_${currentUser.id}`, JSON.stringify([])); } catch (e) {}
     updatePageState();
     renderGrid();
     renderShelves();
@@ -88,6 +108,11 @@ window.addEventListener('load', function () {
 
   if (googleBtn) {
     googleBtn.addEventListener('click', function () {
+      // If the user is already signed in, just continue to their library/empty state
+      if (currentUser) {
+        updatePageState();
+        return;
+      }
       if (!googleSignInReady) {
         showToast('Google sign-in is not ready yet. Refresh and try again.');
         return;
@@ -97,6 +122,7 @@ window.addEventListener('load', function () {
   }
 
   initializeAuthState();
+  bindModalTriggers();
   checkSharedView();
   renderGrid();
   renderShelves();
@@ -275,6 +301,7 @@ function deleteFocusedBook() {
   if (index !== -1) {
     const title = focusedBook.title;
     books.splice(index, 1);
+    try { persistBooks(); } catch (e) {}
     closeFocus();
     applyFilter(activeFilter);
     showToast(`"${title}" deleted from library`);
@@ -290,26 +317,51 @@ let selectedBook = null;
 let searchTimeout = null;
 
 function openModal() {
+  const modal = document.getElementById('add-book-modal');
+  const searchView = document.getElementById('modal-search-view');
+  const detailView = document.getElementById('modal-detail-view');
+  const searchInput = document.getElementById('book-search-input');
+  const results = document.getElementById('search-results');
+  const resultsLabel = document.getElementById('results-label');
+
+  if (!modal || !searchView || !detailView || !searchInput || !results || !resultsLabel) return;
+
   document.body.classList.add('modal-open');
-  document.getElementById('add-book-modal').classList.add('open');
-  document.getElementById('modal-search-view').style.display = 'flex';
-  document.getElementById('modal-detail-view').style.display = 'none';
-  document.getElementById('book-search-input').value = '';
-  document.getElementById('search-results').innerHTML = '';
-  document.getElementById('results-label').style.display = 'none';
+  modal.classList.add('open');
+  searchView.style.display = 'flex';
+  detailView.style.display = 'none';
+  searchInput.value = '';
+  results.innerHTML = '';
+  resultsLabel.style.display = 'none';
   disableAddDetails();
-  setTimeout(() => document.getElementById('book-search-input').focus(), 100);
+  setTimeout(() => searchInput.focus(), 100);
 }
 
 function closeModal() {
   document.body.classList.remove('modal-open');
-  document.getElementById('add-book-modal').classList.remove('open');
+  const modal = document.getElementById('add-book-modal');
+  if (modal) modal.classList.remove('open');
   selectedBook = null;
 }
 
-document.getElementById('add-book-modal').addEventListener('click', function (e) {
-  if (e.target === this) closeModal();
-});
+function bindModalTriggers() {
+  const navAddBtn = document.getElementById('nav-add-btn');
+  if (navAddBtn) {
+    navAddBtn.removeEventListener('click', handleAddBookClick);
+    navAddBtn.addEventListener('click', handleAddBookClick);
+  }
+}
+
+function handleAddBookClick() {
+  openModal();
+}
+
+const addBookModal = document.getElementById('add-book-modal');
+if (addBookModal) {
+  addBookModal.addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+  });
+}
 
 // ── GOOGLE BOOKS SEARCH ──
 function getCoverUrl(imageLinks) {
@@ -549,12 +601,23 @@ function saveBook() {
     notes,
   };
   books.push(newBook);
+  // persist for signed-in users
+  try { persistBooks(); } catch (e) {}
   renderGrid();
   renderShelves();
   updateBookCount();
   updatePageState();
   showToast(`"${selectedBook.title}" added to ${shelf}`);
   closeModal();
+}
+
+function persistBooks() {
+  if (!currentUser) return;
+  try {
+    localStorage.setItem(`myLibrary_books_${currentUser.id}`, JSON.stringify(books));
+  } catch (e) {
+    // ignore storage errors
+  }
 }
 
 function updateBookCount() {
@@ -893,6 +956,13 @@ function saveProfile() {
   }
 
   showToast('Profile saved');
+  closeProfile();
+}
+
+function signOut() {
+  currentUser = null;
+  localStorage.removeItem('myLibrary_user');
+  showOnboarding();
   closeProfile();
 }
 

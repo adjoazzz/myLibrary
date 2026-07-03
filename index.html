@@ -7,19 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Italianno&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/gif" href="assets/myLIbrary%20LOGO.gif" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- ONBOARDING SCREEN -->
   <div id="onboarding-screen" class="onboarding-screen">
     <div class="onboarding-container">
-      <div class="onboarding-book-stack" aria-hidden="true">
-        <div class="book-spine spine-1"></div>
-        <div class="book-spine spine-2"></div>
-        <div class="book-spine spine-3"></div>
-        <div class="book-spine spine-4"></div>
-        <div class="book-spine spine-5"></div>
-      </div>
       <div class="onboarding-card">
         <div class="onboarding-header">Create your library</div>
         <div class="onboarding-description">Sign up to start collecting and organizing your favorite books.</div>
@@ -45,7 +39,7 @@
   <!-- EMPTY STATE SCREEN -->
   <div id="empty-state-screen" class="empty-state-screen" style="display:none;">
     <div class="empty-state-container">
-      <div class="empty-state-icon">📚</div>
+      <img class="empty-state-illustration" src="assets/myLIbrary%20LOGO.gif" alt="Empty library illustration" />
       <div class="empty-state-header">You have no books</div>
       <div class="empty-state-description">Start building your library by adding your first book.</div>
       <button class="btn-add-details" onclick="goToAddBook()">Add a book</button>
@@ -238,6 +232,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn-back" onclick="closeProfile()">Cancel</button>
+        <button class="btn-logout" onclick="signOut()">Sign out</button>
         <button class="btn-save" onclick="saveProfile()">Save changes</button>
       </div>
     </div>
