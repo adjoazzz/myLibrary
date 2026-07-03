@@ -80,17 +80,19 @@ function renderShelves() {
       shelves[name].forEach(function (book) {
         const spine = document.createElement('div');
         spine.className = 'spine';
+        // use CSS variables so the stylesheet can layer texture/effects while
+        // still using the book's chosen colors
         spine.innerHTML = `
           <div class="spine-inner">
-            <div class="spine-front" style="background:${book.coverBg};">
-              <span style="color:${book.coverText};">${book.title}</span>
+            <div class="spine-front" style="--spine-bg:${book.coverBg}; --spine-text:${book.coverText};">
+              <span>${book.title}</span>
             </div>
-            <div class="spine-side" style="background:${book.coverBg};"></div>
+            <div class="spine-side" style="--spine-bg:${book.coverBg};"></div>
             <div class="spine-top"></div>
-            <div class="spine-back" style="background:${book.coverBg};">
+            <div class="spine-back" style="--spine-bg:${book.coverBg}; --spine-text:${book.coverText};">
               ${book.cover
                 ? `<img src="${book.cover}" alt="${book.title}" />`
-                : `<div class="spine-back-placeholder" style="background:${book.coverBg};"><span style="color:${book.coverText};">${book.title}</span></div>`
+                : `<div class="spine-back-placeholder" style="--spine-bg:${book.coverBg};"><span style="--spine-text:${book.coverText};">${book.title}</span></div>`
               }
             </div>
           </div>
@@ -826,7 +828,7 @@ document.getElementById('shelf-select').addEventListener('change', function () {
 });
 
 // ── SHARE LIBRARY ──
-function shareLibrary() {
+async function shareLibrary() {
   const name = document.getElementById('profile-name')
     ? document.getElementById('profile-name').value.trim() || 'Nana Adjoa'
     : 'Nana Adjoa';
@@ -850,18 +852,80 @@ function shareLibrary() {
     return;
   }
 
-  const url = window.location.origin + window.location.pathname + '#share=' + encoded;
+  const baseUrl = (window.location.protocol === 'file:' || window.location.origin === 'null')
+    ? window.location.href.split('#')[0]
+    : window.location.origin + window.location.pathname;
+  const longUrl = baseUrl + '#share=' + encoded;
 
-  if (url.length > 64000) {
+  if (longUrl.length > 64000) {
     showToast('Library is too large to share as a link.');
     return;
   }
 
-  navigator.clipboard.writeText(url).then(function () {
-    showToast('Share link copied to clipboard!');
-  }).catch(function () {
-    // Fallback: prompt so they can copy manually
-    prompt('Copy this link to share your library:', url);
+  const shortUrl = await getShortUrl(longUrl);
+  const finalUrl = shortUrl || longUrl;
+
+  const copied = await copyToClipboard(finalUrl);
+  if (copied) {
+    showToast(shortUrl ? 'Short share link copied to clipboard!' : 'Share link copied to clipboard!');
+  } else {
+    showToast('Share link ready in the box below.');
+  }
+
+  showShareConfirm(finalUrl);
+}
+
+async function getShortUrl(longUrl) {
+  try {
+    const response = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl));
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.shorturl) return data.shorturl;
+  } catch (err) {
+    // ignore and return null to fall back to full URL
+  }
+  return null;
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function showShareConfirm(url) {
+  const overlay = document.getElementById('share-confirm-overlay');
+  const input = document.getElementById('share-confirm-input');
+  const openBtn = document.getElementById('share-open-btn');
+
+  if (!overlay || !input || !openBtn) return;
+
+  input.value = url;
+  openBtn.href = url;
+  overlay.classList.add('open');
+  setTimeout(() => input.select(), 50);
+}
+
+function closeShareConfirm() {
+  const overlay = document.getElementById('share-confirm-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function copyShareLink() {
+  const input = document.getElementById('share-confirm-input');
+  if (!input) return;
+  copyToClipboard(input.value).then(function (copied) {
+    if (copied) showToast('Share link copied to clipboard!');
+  });
+}
+
+const shareConfirmOverlay = document.getElementById('share-confirm-overlay');
+if (shareConfirmOverlay) {
+  shareConfirmOverlay.addEventListener('click', function (e) {
+    if (e.target === this) closeShareConfirm();
   });
 }
 

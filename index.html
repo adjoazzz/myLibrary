@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>myLibrary</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Italianno&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -203,14 +204,24 @@
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
+  <div class="share-confirm-overlay" id="share-confirm-overlay">
+    <div class="share-confirm-modal">
+      <div class="share-confirm-header">Share link ready</div>
+      <div class="share-confirm-body">
+        <div class="share-confirm-copy-label">Copy or open this link:</div>
+        <input class="share-confirm-input" id="share-confirm-input" readonly />
+      </div>
+      <div class="share-confirm-actions">
+        <button class="btn-back" onclick="closeShareConfirm()">Close</button>
+        <button class="btn-save" id="share-copy-btn" onclick="copyShareLink()">Copy link</button>
+        <a class="btn-add-details" id="share-open-btn" target="_blank" rel="noreferrer">Open link</a>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
 
 
-//the next changes to be made are: 
 
-
-
-
-5. the spine color when its on the shelf. it should match the color of the book and make the name on it
