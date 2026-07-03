@@ -37,7 +37,7 @@ function renderGrid() {
     card.innerHTML = `
       <div class="book-cover">
         ${book.cover
-          ? `<img src="${book.cover}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;" />`
+          ? `<img src="${book.cover}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div class=\'book-cover-placeholder\' style=\'background:${book.coverBg};\' ><span style=\'color:${book.coverText};\' >${book.title}</span></div>'" />`
           : `<div class="book-cover-placeholder" style="background:${book.coverBg};"><span style="color:${book.coverText};">${book.title}</span></div>`
         }
       </div>
@@ -105,7 +105,10 @@ function renderShelves() {
 }
 
 // ── BOOK FOCUS OVERLAY ──
+let focusedBook = null;
+
 function openFocus(book) {
+  focusedBook = book;
   const overlay = document.getElementById('book-focus-overlay');
   const coverFloat = document.getElementById('focus-cover');
   const card = document.getElementById('focus-card');
@@ -114,7 +117,7 @@ function openFocus(book) {
   card.classList.remove('closing');
 
   if (book.cover) {
-    coverFloat.innerHTML = `<img src="${book.cover}" alt="${book.title}" />`;
+    coverFloat.innerHTML = `<img src="${book.cover}" alt="${book.title}" onerror="this.parentElement.innerHTML='<div class=\'book-focus-cover-placeholder\' style=\'background:${book.coverBg};\' ><span style=\'color:${book.coverText};\' >${book.title}</span></div>'; this.parentElement.style.background='${book.coverBg}';" />`;
     coverFloat.style.background = '';
   } else {
     coverFloat.innerHTML = `<div class="book-focus-cover-placeholder" style="background:${book.coverBg};"><span style="color:${book.coverText};">${book.title}</span></div>`;
@@ -155,6 +158,22 @@ function closeFocus() {
   setTimeout(function () { overlay.classList.remove('open'); }, 300);
 }
 
+function deleteFocusedBook() {
+  if (!focusedBook) return;
+
+  const confirmDelete = confirm(`Are you sure you want to delete "${focusedBook.title}" from your library?`);
+  if (!confirmDelete) return;
+
+  const index = books.findIndex(b => b.id === focusedBook.id);
+  if (index !== -1) {
+    const title = focusedBook.title;
+    books.splice(index, 1);
+    closeFocus();
+    applyFilter(activeFilter);
+    showToast(`"${title}" deleted from library`);
+  }
+}
+
 document.getElementById('book-focus-overlay').addEventListener('click', function (e) {
   if (e.target === this) closeFocus();
 });
@@ -188,79 +207,133 @@ document.getElementById('add-book-modal').addEventListener('click', function (e)
 // ── GOOGLE BOOKS SEARCH ──
 function getCoverUrl(imageLinks) {
   if (!imageLinks) return null;
-  const raw = imageLinks.extraLarge || imageLinks.large || imageLinks.medium || imageLinks.thumbnail || imageLinks.smallThumbnail;
+  const raw = imageLinks.thumbnail || imageLinks.smallThumbnail || imageLinks.medium || imageLinks.large || imageLinks.extraLarge;
   if (!raw) return null;
-  return raw.replace('http://', 'https://').replace(/&zoom=\d/, '').replace(/&fife=[^&]+/, '') + '&fife=w800';
+  // Only upgrade to https — avoid re-manipulating Google's signed URL parameters
+  return raw.replace('http://', 'https://');
 }
 
 async function searchBooks(query) {
+  const container = document.getElementById('search-results');
+  const labelEl = document.getElementById('results-label');
+
   if (!query || query.trim().length < 2) {
-    document.getElementById('search-results').innerHTML = '';
-    document.getElementById('results-label').style.display = 'none';
+    container.innerHTML = '';
+    labelEl.style.display = 'none';
     disableAddDetails();
     return;
   }
 
-  document.getElementById('results-label').style.display = 'block';
-  document.getElementById('search-results').innerHTML = '<div class="results-grid"><div class="search-loading">Searching...</div></div>';
+  labelEl.style.display = 'block';
   disableAddDetails();
+
+  // ── Local matches (instant) ──
+  const q = query.trim().toLowerCase();
+  const localMatches = books.filter(function (b) {
+    return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+  });
+
+  container.innerHTML = '';
+
+  if (localMatches.length > 0) {
+    const localSection = document.createElement('div');
+    localSection.className = 'results-section';
+
+    const localLabel = document.createElement('div');
+    localLabel.className = 'results-section-label';
+    localLabel.textContent = 'In your library';
+    localSection.appendChild(localLabel);
+
+    const localGrid = document.createElement('div');
+    localGrid.className = 'results-grid';
+    localMatches.forEach(function (book) {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      const coverHtml = book.cover
+        ? `<img src="${book.cover}" alt="${book.title}" onerror="this.parentElement.innerHTML='<div class=\'result-cover-placeholder\'><span>${book.title.replace(/'/g, "&#39;")}</span></div>'" />`
+        : `<div class="result-cover-placeholder" style="background:${book.coverBg};"><span style="color:${book.coverText};">${book.title}</span></div>`;
+      card.innerHTML = `
+        <div class="result-cover">${coverHtml}</div>
+        <div class="result-info">
+          <div class="result-title">${book.title}</div>
+          <div class="result-author">${book.author}</div>
+        </div>
+      `;
+      card.addEventListener('click', function () {
+        document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedBook = {
+          title: book.title,
+          author: book.author,
+          cover: book.cover,
+          description: '',
+        };
+        enableAddDetails();
+      });
+      localGrid.appendChild(card);
+    });
+    localSection.appendChild(localGrid);
+    container.appendChild(localSection);
+  }
+
+  // ── Google Books (async) ──
+  const googleSection = document.createElement('div');
+  googleSection.className = 'results-section';
+
+  const googleLabel = document.createElement('div');
+  googleLabel.className = 'results-section-label';
+  googleLabel.textContent = 'From Google Books';
+  googleSection.appendChild(googleLabel);
+
+  const googleGrid = document.createElement('div');
+  googleGrid.className = 'results-grid';
+  googleGrid.innerHTML = '<div class="search-loading" style="grid-column:1/-1">Searching…</div>';
+  googleSection.appendChild(googleGrid);
+  container.appendChild(googleSection);
 
   try {
     const res = await fetch(
       `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=9&printType=books&key=AIzaSyDYgVj9GRej6iSb3mkmL9bDRca9sxF3k2o`
     );
     const data = await res.json();
+    googleGrid.innerHTML = '';
     if (!data.items || data.items.length === 0) {
-      document.getElementById('search-results').innerHTML = '<div class="search-empty" style="display:block;">No books found. Try a different search.</div>';
+      googleGrid.innerHTML = '<div class="search-loading" style="grid-column:1/-1">No results from Google Books.</div>';
       return;
     }
-    renderResults(data.items);
+    data.items.forEach(function (item) {
+      const info = item.volumeInfo;
+      const title = info.title || 'Unknown Title';
+      const author = info.authors ? info.authors[0] : 'Unknown Author';
+      const cover = getCoverUrl(info.imageLinks);
+      const description = info.description || '';
+
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      const coverHtml = cover
+        ? `<img src="${cover}" alt="${title}" onerror="this.parentElement.innerHTML='<div class=\'result-cover-placeholder\'><span>${title.replace(/'/g, "&#39;")}</span></div>'" />`
+        : `<div class="result-cover-placeholder"><span>${title}</span></div>`;
+      card.innerHTML = `
+        <div class="result-cover">${coverHtml}</div>
+        <div class="result-info">
+          <div class="result-title">${title}</div>
+          <div class="result-author">${author}</div>
+        </div>
+      `;
+      card.addEventListener('click', function () {
+        document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedBook = { title, author, cover, description };
+        enableAddDetails();
+      });
+      googleGrid.appendChild(card);
+    });
   } catch (err) {
-    document.getElementById('search-results').innerHTML =
-      '<div class="results-grid"><div class="search-loading">Something went wrong. Try again.</div></div>';
+    googleGrid.innerHTML = '<div class="search-loading" style="grid-column:1/-1">Could not reach Google Books. Check your connection.</div>';
   }
 }
 
-function renderResults(items) {
-  const container = document.getElementById('search-results');
-  const grid = document.createElement('div');
-  grid.className = 'results-grid';
-
-  items.forEach(function (item) {
-    const info = item.volumeInfo;
-    const title = info.title || 'Unknown Title';
-    const author = info.authors ? info.authors[0] : 'Unknown Author';
-    const cover = getCoverUrl(info.imageLinks);
-    const description = info.description || '';
-
-    const card = document.createElement('div');
-    card.className = 'result-card';
-    card.innerHTML = `
-      <div class="result-cover">
-        ${cover
-          ? `<img src="${cover}" alt="${title}" />`
-          : `<div class="result-cover-placeholder"><span>${title}</span></div>`
-        }
-      </div>
-      <div class="result-info">
-        <div class="result-title">${title}</div>
-        <div class="result-author">${author}</div>
-      </div>
-    `;
-
-    card.addEventListener('click', function () {
-      document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selectedBook = { title, author, cover, description };
-      enableAddDetails();
-    });
-
-    grid.appendChild(card);
-  });
-
-  container.innerHTML = '';
-  container.appendChild(grid);
-}
+// renderResults is now inlined inside searchBooks above
 
 function enableAddDetails() {
   document.getElementById('btn-add-details').classList.add('enabled');
@@ -278,7 +351,7 @@ function showDetailView() {
 
   const coverEl = document.getElementById('detail-cover');
   if (selectedBook.cover) {
-    coverEl.innerHTML = `<img src="${selectedBook.cover}" alt="${selectedBook.title}" />`;
+    coverEl.innerHTML = `<img src="${selectedBook.cover}" alt="${selectedBook.title}" onerror="this.parentElement.innerHTML='<div class=\'detail-cover-placeholder\'><span>${selectedBook.title.replace(/'/g, "&#39;")}</span></div>'" />`;
   } else {
     coverEl.innerHTML = `<div class="detail-cover-placeholder"><span>${selectedBook.title}</span></div>`;
   }
@@ -313,6 +386,12 @@ function refreshShelfOptions() {
     opt.textContent = s;
     select.appendChild(opt);
   });
+
+  const createOpt = document.createElement('option');
+  createOpt.value = '__CREATE_NEW__';
+  createOpt.textContent = '+ Create new category…';
+  select.appendChild(createOpt);
+
   if (current) select.value = current;
 }
 
@@ -352,7 +431,7 @@ function saveBook() {
   }
 
   const newBook = {
-    id: books.length + 1,
+    id: books.length > 0 ? Math.max(...books.map(b => b.id)) + 1 : 1,
     title: selectedBook.title,
     author: selectedBook.author,
     cover: selectedBook.cover,
@@ -382,12 +461,68 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-// ── SEARCH INPUT DEBOUNCE ──
+// ── SEARCH INPUT DEBOUNCE (Add Book modal) ──
 document.getElementById('book-search-input').addEventListener('input', function () {
   clearTimeout(searchTimeout);
   const val = this.value.trim();
   searchTimeout = setTimeout(() => searchBooks(val), 400);
 });
+
+// ── NAV SEARCH (local library filter) ──
+let navSearchTimeout = null;
+
+document.querySelector('.search-input').addEventListener('input', function () {
+  clearTimeout(navSearchTimeout);
+  const val = this.value.trim();
+  navSearchTimeout = setTimeout(() => filterLocalLibrary(val), 250);
+});
+
+function filterLocalLibrary(query) {
+  const q = query.toLowerCase();
+  const filtered = q.length < 1
+    ? books
+    : books.filter(function (b) {
+        return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
+      });
+
+  // Update count display
+  const countEl = document.getElementById('book-count');
+  if (q.length > 0) {
+    countEl.textContent = filtered.length + (filtered.length === 1 ? ' Result' : ' Results');
+  } else {
+    countEl.textContent = books.length + ' Books';
+  }
+
+  // Re-render with filtered set
+  const gridContainer = document.getElementById('grid-books');
+  if (gridContainer) {
+    gridContainer.innerHTML = '';
+    filtered.forEach(function (book) {
+      const card = document.createElement('div');
+      card.className = 'book-card';
+      const coverBg = book.coverBg || '#888780';
+      const coverText = book.coverText || '#F0EDE6';
+      card.innerHTML = `
+        <div class="book-cover">
+          ${book.cover
+            ? `<img src="${book.cover}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div class=\'book-cover-placeholder\' style=\'background:${coverBg};\' ><span style=\'color:${coverText};\' >${book.title}</span></div>'" />`
+            : `<div class="book-cover-placeholder" style="background:${coverBg};"><span style="color:${coverText};">${book.title}</span></div>`
+          }
+        </div>
+        <div class="book-title">${book.title}</div>
+        <div class="book-author">${book.author}</div>
+      `;
+      card.addEventListener('click', function () { openFocus(book); });
+      gridContainer.appendChild(card);
+    });
+  }
+
+  if (filtered.length === 0 && q.length > 0) {
+    if (gridContainer) {
+      gridContainer.innerHTML = '<div class="library-empty-search">No books match "' + query + '"</div>';
+    }
+  }
+}
 
 // ── FILTER ──
 let activeFilter = null;
@@ -481,7 +616,16 @@ function buildFilterDropdown() {
     const count = shelfCounts[shelf] || 0;
     const opt = document.createElement('div');
     opt.className = 'filter-option' + (activeFilter === shelf ? ' active' : '');
-    opt.innerHTML = `<span>${shelf}</span><span class="filter-option-count">${count}</span>`;
+    
+    const shelfSpan = document.createElement('span');
+    shelfSpan.textContent = shelf;
+    opt.appendChild(shelfSpan);
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'filter-option-count';
+    countSpan.textContent = count;
+    opt.appendChild(countSpan);
+
     opt.addEventListener('click', function () { applyFilter(shelf); });
     dropdown.appendChild(opt);
   });
@@ -661,7 +805,113 @@ function handleAvatarUpload(event) {
   reader.readAsDataURL(file);
 }
 
+document.getElementById('shelf-select').addEventListener('change', function () {
+  if (this.value === '__CREATE_NEW__') {
+    const newCat = prompt('Enter the name of the new category:');
+    if (newCat && newCat.trim()) {
+      const name = newCat.trim();
+      if (getAllShelves().map(s => s.toLowerCase()).includes(name.toLowerCase())) {
+        showToast('That category already exists.');
+        this.value = '';
+        return;
+      }
+      customShelves.push(name);
+      refreshShelfOptions();
+      this.value = name;
+      showToast(`Category "${name}" created`);
+    } else {
+      this.value = '';
+    }
+  }
+});
+
+// ── SHARE LIBRARY ──
+function shareLibrary() {
+  const name = document.getElementById('profile-name')
+    ? document.getElementById('profile-name').value.trim() || 'Nana Adjoa'
+    : 'Nana Adjoa';
+  const libName = document.getElementById('profile-library-name')
+    ? document.getElementById('profile-library-name').value.trim() || document.querySelector('.lib-sub').textContent
+    : document.querySelector('.lib-sub').textContent;
+
+  const payload = {
+    v: 1,
+    ownerName: name,
+    libName: libName,
+    books: books,
+    customShelves: customShelves,
+  };
+
+  let encoded;
+  try {
+    encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  } catch (e) {
+    showToast('Library is too large to share as a link.');
+    return;
+  }
+
+  const url = window.location.origin + window.location.pathname + '#share=' + encoded;
+
+  if (url.length > 64000) {
+    showToast('Library is too large to share as a link.');
+    return;
+  }
+
+  navigator.clipboard.writeText(url).then(function () {
+    showToast('Share link copied to clipboard!');
+  }).catch(function () {
+    // Fallback: prompt so they can copy manually
+    prompt('Copy this link to share your library:', url);
+  });
+}
+
+// ── SHARED VIEW ──
+function checkSharedView() {
+  const hash = window.location.hash;
+  if (!hash.startsWith('#share=')) return;
+
+  const encoded = hash.slice('#share='.length);
+  let payload;
+  try {
+    payload = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+  } catch (e) {
+    showToast('Could not load shared library — link may be corrupted.');
+    return;
+  }
+
+  if (!payload || !Array.isArray(payload.books)) return;
+
+  // Load the shared books
+  books.length = 0;
+  payload.books.forEach(function (b) { books.push(b); });
+
+  if (Array.isArray(payload.customShelves)) {
+    customShelves.length = 0;
+    payload.customShelves.forEach(function (s) { customShelves.push(s); });
+  }
+
+  // Update the page header
+  const libName = payload.libName || (payload.ownerName ? payload.ownerName + "'s Library" : 'Shared Library');
+  document.querySelector('.lib-sub').textContent = libName;
+
+  // Show the banner
+  const banner = document.getElementById('shared-banner');
+  document.getElementById('shared-lib-name').textContent = libName;
+  banner.classList.add('visible');
+
+  // Hide editing controls
+  const addBtn = document.getElementById('nav-add-btn');
+  const shareBtn = document.getElementById('nav-share-btn');
+  const avatar = document.getElementById('nav-avatar');
+  const divider = document.getElementById('nav-profile-divider');
+  if (addBtn) addBtn.style.display = 'none';
+  if (shareBtn) shareBtn.style.display = 'none';
+  if (avatar) avatar.style.display = 'none';
+  if (divider) divider.style.display = 'none';
+}
+
 // ── INIT ──
+checkSharedView();
 renderGrid();
 renderShelves();
 updateBookCount();

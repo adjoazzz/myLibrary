@@ -19,6 +19,41 @@ body.modal-open {
   padding-bottom: 100px;
 }
 
+/* ── SHARED BANNER ── */
+#shared-banner {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 10px 24px;
+  background: #F5E6C8;
+  border-bottom: 0.5px solid #E8D4A0;
+  font-size: 12px;
+  color: #6B4F1A;
+  text-align: center;
+}
+
+#shared-banner.visible {
+  display: flex;
+}
+
+#shared-banner strong {
+  font-weight: 600;
+}
+
+#shared-banner a {
+  color: #B8965A;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 0.5px solid #B8965A;
+  padding-bottom: 1px;
+  transition: color 0.15s;
+}
+
+#shared-banner a:hover {
+  color: #8A6A30;
+}
+
 /* ── TOPBAR ── */
 .topbar {
   padding: 28px 32px 0;
@@ -131,6 +166,11 @@ body.modal-open {
   min-height: 150px;
   overflow-x: auto;
   flex: 1;
+  scrollbar-width: none; /* Firefox */
+}
+
+.shelf-books::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
 }
 
 .spine {
@@ -447,7 +487,7 @@ body.modal-open {
 
 .search-results {
   overflow-y: auto;
-  max-height: 340px;
+  max-height: 420px;
   padding: 0 24px 16px;
 }
 
@@ -456,6 +496,33 @@ body.modal-open {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
+}
+
+.results-section {
+  margin-bottom: 20px;
+}
+
+.results-section:last-child {
+  margin-bottom: 0;
+}
+
+.results-section-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #A0998E;
+  font-weight: 500;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid #E8E2D8;
+}
+
+.library-empty-search {
+  font-size: 13px;
+  color: #A0998E;
+  text-align: center;
+  padding: 60px 20px;
+  grid-column: 1 / -1;
 }
 
 .search-loading {
@@ -1108,6 +1175,24 @@ body.modal-open {
 
 .btn-close-focus:hover {
   background: #EDE8DF;
+}
+
+.btn-delete-book {
+  background: none;
+  border: 0.5px solid #E6B0AA;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 12px;
+  color: #C0392B;
+  cursor: pointer;
+  margin-right: auto;
+  transition: all 0.2s;
+}
+
+.btn-delete-book:hover {
+  background: #FDEDEC;
+  color: #A93226;
+  border-color: #EC7063;
 }
 
 /* ── FILTER DROPDOWN ── */

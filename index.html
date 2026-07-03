@@ -11,6 +11,12 @@
 <body>
   <div class="page">
 
+    <!-- SHARED VIEW BANNER -->
+    <div id="shared-banner">
+      <span>Viewing <strong id="shared-lib-name"></strong></span>
+      <a href="./" id="shared-own-link">Open your own library →</a>
+    </div>
+
     <div class="topbar">
       <div class="lib-title">myLibrary</div>
       <div class="lib-sub">Nana Adjoa's Library</div>
@@ -34,15 +40,15 @@
       <div class="nav-divider"></div>
       <input class="search-input" type="text" placeholder="Search book" />
       <div class="filter-wrapper"><button class="nav-btn" id="filter-btn" onclick="toggleFilter()">Filter</button><div class="filter-dropdown" id="filter-dropdown"></div></div>
-      <button class="nav-add" onclick="openModal()">Add book</button>
+      <button class="nav-add" id="nav-add-btn" onclick="openModal()">Add book</button>
       <div class="nav-divider"></div>
       <div class="toggle-group">
         <button class="nav-btn active" id="btn-grid" onclick="setView('grid', this)">Grid</button>
         <button class="nav-btn" id="btn-shelf" onclick="setView('shelf', this)">Shelf</button>
       </div>
-      <button class="nav-share">Share library</button>
-      <div class="nav-divider"></div>
-      <div class="avatar" onclick="openProfile()">NA</div>
+      <button class="nav-share" id="nav-share-btn" onclick="shareLibrary()">Share library</button>
+      <div class="nav-divider" id="nav-profile-divider"></div>
+      <div class="avatar" id="nav-avatar" onclick="openProfile()">NA</div>
     </div>
 
   </div>
@@ -67,6 +73,7 @@
           </div>
         </div>
         <div class="book-focus-footer">
+          <button class="btn-delete-book" id="btn-delete-book" onclick="deleteFocusedBook()">Delete book</button>
           <button class="btn-close-focus" onclick="closeFocus()">Close</button>
         </div>
       </div>
@@ -202,11 +209,8 @@
 
 
 //the next changes to be made are: 
-1. the delete a book from library, 
-2. the image cannot load issue
-3. the creating a new category in the category dropdown menu
-4. share library button maybe generate a link that can be shared with others to view the library
+
+
+
+
 5. the spine color when its on the shelf. it should match the color of the book and make the name on it
-6. remove the scroll bar from the side of the shelf, if it needs scrolling, it should just expand 
-7. Add an edit and delete button on the book details modal and the shadow behind the book is too much
-8. work on search functionality, maybe add a debounce so it doesn't search with every keystroke and also make sure it searches through the local library as well as google books
