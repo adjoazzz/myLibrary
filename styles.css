@@ -20,6 +20,199 @@ body.modal-open {
   background-blend-mode: lighten;
 }
 
+/* ── ONBOARDING SCREEN ── */
+.onboarding-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #F0EDE6 url('assets/bg.jpg') top center / cover no-repeat fixed;
+  padding: 20px;
+}
+
+.onboarding-container {
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+}
+
+.onboarding-book-stack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.book-spine {
+  position: absolute;
+  width: 28px;
+  height: 160px;
+  border-radius: 4px;
+  transform: skewY(-10deg);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+}
+
+.book-spine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), transparent 35%, rgba(0,0,0,0.08));
+}
+
+.book-spine::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: 8px;
+  height: 30px;
+  background: rgba(255,255,255,0.4);
+  transform: translateX(-50%) rotate(-10deg);
+  border-radius: 2px;
+}
+
+.spine-1 {
+  left: 18%;
+  top: 30px;
+  background: #F5CA7B;
+}
+
+.spine-2 {
+  left: 29%;
+  top: 12px;
+  background: #8A5B9D;
+}
+
+.spine-3 {
+  left: 42%;
+  top: 8px;
+  background: #D95C4D;
+}
+
+.spine-4 {
+  left: 56%;
+  top: 24px;
+  background: #2B4F68;
+}
+
+.spine-5 {
+  left: 70%;
+  top: 40px;
+  background: #9AAE80;
+}
+
+.onboarding-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 48px 32px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(44, 44, 42, 0.08);
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.onboarding-header {
+  font-size: 70px;
+  font-weight: 600;
+  color: #2C2C2A;
+  margin-bottom: 12px;
+  font-family: 'Italianno', serif;
+}
+
+.onboarding-description {
+  font-size: 15px;
+  color: #5F5E5A;
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+.google-signin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 20px;
+  background: white;
+  border: 1.5px solid #D0D0D0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 24px;
+}
+
+.google-signin-btn:hover {
+  background: #F9F9F9;
+  border-color: #B0B0B0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.onboarding-footer {
+  font-size: 12px;
+  color: #888780;
+  line-height: 1.6;
+}
+
+.onboarding-footer-text {
+  color: #888780;
+}
+
+.onboarding-link {
+  color: #B8965A;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 0.5px solid #B8965A;
+  transition: color 0.15s;
+}
+
+.onboarding-link:hover {
+  color: #8A6A30;
+}
+
+/* ── EMPTY STATE SCREEN ── */
+.empty-state-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: rgba(240, 237, 230, 0.55);
+  padding: 20px;
+}
+
+.empty-state-container {
+  text-align: center;
+  max-width: 400px;
+}
+
+.empty-state-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  opacity: 0.8;
+}
+
+.empty-state-header {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2C2C2A;
+  margin-bottom: 12px;
+}
+
+.empty-state-description {
+  font-size: 15px;
+  color: #5F5E5A;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
 /* ── SHARED BANNER ── */
 #shared-banner {
   display: none;
@@ -378,14 +571,42 @@ body.modal-open {
   }
 
   .floating-nav {
-    left: 16px;
-    right: 16px;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
     transform: none;
     max-width: 100%;
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .nav-count {
+    flex-basis: 100%;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .nav-divider {
+    display: none;
   }
 
   .search-input {
     display: none;
+  }
+
+  .nav-add,
+  .nav-share,
+  .toggle-group,
+  .nav-btn {
+    flex: 1 1 120px;
+    min-width: 120px;
+  }
+
+  .toggle-group {
+    justify-content: center;
   }
 }
 

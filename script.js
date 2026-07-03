@@ -1,3 +1,96 @@
+// ── AUTH STATE ──
+let currentUser = null;
+
+function initializeAuthState() {
+  const storedUser = localStorage.getItem('myLibrary_user');
+  if (storedUser) {
+    currentUser = JSON.parse(storedUser);
+    showLibraryPage();
+  } else {
+    showOnboarding();
+  }
+}
+
+function showOnboarding() {
+  document.getElementById('onboarding-screen').style.display = 'flex';
+  document.getElementById('empty-state-screen').style.display = 'none';
+  document.getElementById('main-page').style.display = 'none';
+}
+
+function showEmptyState() {
+  document.getElementById('onboarding-screen').style.display = 'none';
+  document.getElementById('empty-state-screen').style.display = 'flex';
+  document.getElementById('main-page').style.display = 'none';
+}
+
+function showLibraryPage() {
+  document.getElementById('onboarding-screen').style.display = 'none';
+  document.getElementById('empty-state-screen').style.display = 'none';
+  document.getElementById('main-page').style.display = 'block';
+}
+
+function updatePageState() {
+  if (!currentUser) {
+    showOnboarding();
+  } else if (books.length === 0) {
+    showEmptyState();
+  } else {
+    showLibraryPage();
+  }
+}
+
+function goToAddBook() {
+  showLibraryPage();
+  openModal();
+}
+
+// Google Sign-In callback
+function onGoogleSignIn(response) {
+  const userData = response.credential; // JWT token
+  try {
+    const payload = JSON.parse(atob(userData.split('.')[1])); // Decode JWT payload
+    currentUser = {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      picture: payload.picture,
+    };
+    localStorage.setItem('myLibrary_user', JSON.stringify(currentUser));
+    books.length = 0; // Clear demo books for new user
+    updatePageState();
+    renderGrid();
+    renderShelves();
+    updateBookCount();
+  } catch (err) {
+    showToast('Sign in failed. Please try again.');
+  }
+}
+
+// Initialize Google Sign-In button
+window.addEventListener('load', function () {
+  const googleBtn = document.getElementById('google-signin-btn');
+  if (googleBtn) {
+    googleBtn.addEventListener('click', function () {
+      // Trigger Google Sign-In
+      google.accounts.id.initialize({
+        client_id: '684826739629-p96i1jgjelionebkggt1s733pd239894.apps.googleusercontent.com', // Replace with your Google Client ID
+        callback: onGoogleSignIn,
+      });
+      google.accounts.id.renderButton(
+        document.createElement('div'),
+        { theme: 'outline', size: 'large' }
+      );
+      google.accounts.id.prompt();
+    });
+  }
+
+  initializeAuthState();
+  checkSharedView();
+  renderGrid();
+  renderShelves();
+  updateBookCount();
+});
+
 // ── VIEW TOGGLE ──
 function setView(v, el) {
   document.querySelectorAll('.toggle-group .nav-btn').forEach(function (b) {
@@ -447,6 +540,7 @@ function saveBook() {
   renderGrid();
   renderShelves();
   updateBookCount();
+  updatePageState();
   showToast(`"${selectedBook.title}" added to ${shelf}`);
   closeModal();
 }
