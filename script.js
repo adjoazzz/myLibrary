@@ -66,20 +66,32 @@ function onGoogleSignIn(response) {
   }
 }
 
+let googleSignInReady = false;
+
+function initializeGoogleSignIn() {
+  if (window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({
+      client_id: '684826739629-p96i1jgjelionebkggt1s733pd239894.apps.googleusercontent.com',
+      callback: onGoogleSignIn,
+    });
+    googleSignInReady = true;
+    return true;
+  }
+  googleSignInReady = false;
+  return false;
+}
+
 // Initialize Google Sign-In button
 window.addEventListener('load', function () {
   const googleBtn = document.getElementById('google-signin-btn');
+  initializeGoogleSignIn();
+
   if (googleBtn) {
     googleBtn.addEventListener('click', function () {
-      // Trigger Google Sign-In
-      google.accounts.id.initialize({
-        client_id: '684826739629-p96i1jgjelionebkggt1s733pd239894.apps.googleusercontent.com', // Replace with your Google Client ID
-        callback: onGoogleSignIn,
-      });
-      google.accounts.id.renderButton(
-        document.createElement('div'),
-        { theme: 'outline', size: 'large' }
-      );
+      if (!googleSignInReady) {
+        showToast('Google sign-in is not ready yet. Refresh and try again.');
+        return;
+      }
       google.accounts.id.prompt();
     });
   }
