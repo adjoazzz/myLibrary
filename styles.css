@@ -153,13 +153,6 @@ body.modal-open {
   max-width: 400px;
 }
 
-.empty-state-illustration {
-  width: 220px;
-  max-width: 100%;
-  display: block;
-  margin: 0 auto 28px;
-}
-
 .empty-state-icon {
   font-size: 80px;
   margin-bottom: 24px;
