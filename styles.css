@@ -184,6 +184,13 @@ body.modal-open {
   line-height: 1.6;
 }
 
+.empty-state-illustration {
+  width: 220px;
+  max-width: 100%;
+  display: block;
+  margin: 0 auto 28px;
+}
+
 /* ── SHARED BANNER ── */
 #shared-banner {
   display: none;
@@ -228,7 +235,7 @@ body.modal-open {
   font-size: 22px;
   font-weight: 500;
   color: #2C2C2A;
-  font-family: 'Italanno', 'Playfair Display', serif;
+  font-family: 'Italanno', serif;
 }
 
 .lib-sub {
