@@ -18,7 +18,7 @@ body {
   background-image: url('assets/Book_art-removebg-preview.png');
   background-repeat: no-repeat;
   background-position: center 28%;
-  background-size: clamp(320px, 55vw, 620px);
+  background-size: clamp(620px, 120vw, 1020px);
   mix-blend-mode: multiply;
   pointer-events: none;
   z-index: 0;
