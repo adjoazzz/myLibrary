@@ -123,6 +123,7 @@ window.addEventListener('load', function () {
 
   initializeAuthState();
   bindModalTriggers();
+  bindAddBookButtons();
   checkSharedView();
   renderGrid();
   renderShelves();
@@ -352,8 +353,30 @@ function bindModalTriggers() {
   }
 }
 
+function bindAddBookButtons() {
+  const emptyStateBtn = document.querySelector('.btn-open-add-book');
+  if (emptyStateBtn) {
+    emptyStateBtn.removeEventListener('click', handleAddBookButtonClick);
+    emptyStateBtn.addEventListener('click', handleAddBookButtonClick);
+  }
+
+  const navAddBtn = document.getElementById('nav-add-btn');
+  if (navAddBtn) {
+    navAddBtn.removeEventListener('click', handleAddBookButtonClick);
+    navAddBtn.addEventListener('click', handleAddBookButtonClick);
+  }
+}
+
 function handleAddBookClick() {
   openModal();
+}
+
+function handleAddBookButtonClick(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  goToAddBook();
 }
 
 const addBookModal = document.getElementById('add-book-modal');
