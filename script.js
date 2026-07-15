@@ -42,6 +42,9 @@ async function initializeAuthState() {
       picture: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url || '',
     };
     await loadUserBooks(currentUser.id);
+        renderGrid();
+        renderShelves();
+        updateBookCount();
         updatePageState();
   } else {
     showOnboarding();
@@ -176,20 +179,7 @@ function setView(v, el) {
 }
 
 // ── BOOK DATA ──
-const books = [
-  { id: 1, title: 'Dune', author: 'Frank Herbert', cover: null, coverBg: '#D85A30', coverText: '#712B13', shelf: 'Fiction', rating: 5, notes: 'One of the greatest worldbuilding exercises ever committed to paper.' },
-  { id: 2, title: 'Neuromancer', author: 'William Gibson', cover: null, coverBg: '#534AB7', coverText: '#CECBF6', shelf: 'Fiction', rating: 4, notes: '' },
-  { id: 3, title: 'Grand Union', author: 'Zadie Smith', cover: null, coverBg: '#1D9E75', coverText: '#9FE1CB', shelf: 'Fiction', rating: 4, notes: 'Sharp, funny, and deeply humane.' },
-  { id: 4, title: 'Ficciones', author: 'Borges', cover: null, coverBg: '#2C2C2A', coverText: '#D3D1C7', shelf: 'Fiction', rating: 5, notes: '' },
-  { id: 5, title: 'Spring Snow', author: 'Mishima', cover: null, coverBg: '#BA7517', coverText: '#FAC775', shelf: 'Fiction', rating: 4, notes: '' },
-  { id: 6, title: 'Veronica', author: 'Mary Gaitskill', cover: null, coverBg: '#993556', coverText: '#F4C0D1', shelf: 'Fiction', rating: 3, notes: '' },
-  { id: 7, title: 'Thinking, Fast and Slow', author: 'Kahneman', cover: null, coverBg: '#185FA5', coverText: '#B5D4F4', shelf: 'Nonfiction', rating: 5, notes: 'Changed how I think about thinking.' },
-  { id: 8, title: 'Sapiens', author: 'Harari', cover: null, coverBg: '#3B6D11', coverText: '#C0DD97', shelf: 'Nonfiction', rating: 4, notes: '' },
-  { id: 9, title: 'Bad Blood', author: 'Carreyrou', cover: null, coverBg: '#444441', coverText: '#B4B2A9', shelf: 'Nonfiction', rating: 5, notes: 'Reads like a thriller.' },
-  { id: 10, title: 'The Design of Everyday Things', author: 'Don Norman', cover: null, coverBg: '#0F6E56', coverText: '#9FE1CB', shelf: 'Design', rating: 5, notes: '' },
-  { id: 11, title: 'Dieter Rams', author: 'Sophie Lovell', cover: null, coverBg: '#D85A30', coverText: '#F5C4B3', shelf: 'Design', rating: 4, notes: '' },
-  { id: 12, title: 'Babel', author: 'R.F. Kuang', cover: null, coverBg: '#7A3B69', coverText: '#E8C4E0', shelf: 'Fiction', rating: 4, notes: '' },
-];
+const books = [];
 
 // custom shelves created by user (beyond the built-in ones)
 const customShelves = [];
@@ -351,6 +341,8 @@ document.getElementById('book-focus-overlay').addEventListener('click', function
 // ── ADD BOOK MODAL ──
 let selectedBook = null;
 let searchTimeout = null;
+let latestSearchId = 0;
+let currentSearchController = null;
 
 function openModal() {
   const modal = document.getElementById('add-book-modal');
@@ -430,8 +422,17 @@ function getCoverUrl(imageLinks) {
   return raw.replace('http://', 'https://');
 }
 
-async function searchBooks(query) {
-  const container = document.getElementById('search-results');
+  async function searchBooks(query) {
+    const thisSearchId = ++latestSearchId;
+
+    // cancel any still-in-flight search from a previous keystroke
+    if (currentSearchController) {
+      currentSearchController.abort();
+    }
+    currentSearchController = new AbortController();
+    const signal = currentSearchController.signal;
+
+    const container = document.getElementById('search-results');
   const labelEl = document.getElementById('results-label');
 
   if (!query || query.trim().length < 2) {
@@ -509,15 +510,30 @@ async function searchBooks(query) {
   container.appendChild(googleSection);
 
   try {
-    const res = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=9&printType=books&key=AIzaSyDYgVj9GRej6iSb3mkmL9bDRca9sxF3k2o`
-    );
-    const data = await res.json();
-    googleGrid.innerHTML = '';
-    if (!data.items || data.items.length === 0) {
-      googleGrid.innerHTML = '<div class="search-loading" style="grid-column:1/-1">No results from Google Books.</div>';
-      return;
-    }
+      let res = await fetch(
+            `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent('intitle:' + query)}&maxResults=9&printType=books&key=AIzaSyDYgVj9GRej6iSb3mkmL9bDRca9sxF3k2o`,
+            { signal }
+          );
+
+        // if Google's server had a brief hiccup, wait a bit and try one more time
+        if (res.status === 503) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        res = await fetch(
+                `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent('intitle:' + query)}&maxResults=9&printType=books&key=AIzaSyDYgVj9GRej6iSb3mkmL9bDRca9sxF3k2o`,
+                { signal }
+              );
+        }
+
+      const data = await res.json();
+
+          // if a newer search has started since this one began, ignore this stale result
+          if (thisSearchId !== latestSearchId) return;
+
+          googleGrid.innerHTML = '';
+          if (!data.items || data.items.length === 0) {
+        googleGrid.innerHTML = '<div class="search-loading" style="grid-column:1/-1">No results from Google Books.</div>';
+        return;
+      }
     data.items.forEach(function (item) {
       const info = item.volumeInfo;
       const title = info.title || 'Unknown Title';
@@ -545,7 +561,8 @@ async function searchBooks(query) {
       });
       googleGrid.appendChild(card);
     });
-  } catch (err) {
+} catch (err) {
+    if (err.name === 'AbortError') return; // this search was cancelled because a newer one started - not a real error
     googleGrid.innerHTML = '<div class="search-loading" style="grid-column:1/-1">Could not reach Google Books. Check your connection.</div>';
   }
 }
@@ -716,7 +733,14 @@ function showToast(msg) {
 document.getElementById('book-search-input').addEventListener('input', function () {
   clearTimeout(searchTimeout);
   const val = this.value.trim();
-  searchTimeout = setTimeout(() => searchBooks(val), 400);
+  searchTimeout = setTimeout(() => searchBooks(val), 700);
+});
+
+document.getElementById('book-search-input').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') {
+    clearTimeout(searchTimeout);
+    searchBooks(this.value.trim());
+  }
 });
 
 // ── NAV SEARCH (local library filter) ──
