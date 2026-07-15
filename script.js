@@ -1,33 +1,53 @@
 // ── AUTH STATE ──
 let currentUser = null;
 
-function initializeAuthState() {
-  const storedUser = localStorage.getItem('myLibrary_user');
-  if (storedUser) {
-    currentUser = JSON.parse(storedUser);
-    // load user's saved books if present
-    try {
-      const storedBooksKey = `myLibrary_books_${currentUser.id}`;
-      const storedBooks = localStorage.getItem(storedBooksKey);
-      if (storedBooks) {
-        const parsed = JSON.parse(storedBooks);
-        if (Array.isArray(parsed)) {
-          books.length = 0;
-          parsed.forEach(b => books.push(b));
-        }
-      } else {
-        // no stored books for this user yet: treat as new user (empty library)
-        books.length = 0;
-        try { localStorage.setItem(storedBooksKey, JSON.stringify([])); } catch (e) {}
-      }
-    } catch (e) {
-      /* ignore and fall back to demo books */
-    }
-    updatePageState();
+async function loadUserBooks(userId) {
+  const { data, error } = await supabaseClient
+    .from('books')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error loading books:', error);
+    showToast('Could not load your books. Please refresh.');
+    return;
+  }
+
+  books.length = 0;
+  (data || []).forEach(function (row) {
+    books.push({
+      id: row.id,
+      title: row.title,
+      author: row.author,
+      cover: row.cover,
+      coverBg: row.cover_bg,
+      coverText: row.cover_text,
+      shelf: row.shelf,
+      rating: row.rating,
+      notes: row.notes,
+    });
+  });
+}
+
+
+async function initializeAuthState() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+
+  if (session) {
+    currentUser = {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
+      picture: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url || '',
+    };
+    await loadUserBooks(currentUser.id);
+        updatePageState();
   } else {
     showOnboarding();
   }
 }
+
 
 function showOnboarding() {
   document.getElementById('onboarding-screen').style.display = 'flex';
@@ -63,25 +83,40 @@ function goToAddBook() {
 }
 
 // Google Sign-In callback
-function onGoogleSignIn(response) {
+async function onGoogleSignIn(response) {
   const userData = response.credential; // JWT token
   try {
-    const payload = JSON.parse(atob(userData.split('.')[1])); // Decode JWT payload
+    const payload = JSON.parse(atob(userData.split('.')[1])); // Decode JWT payload (still used for name/picture)
+
+    // Hand the same token to Supabase so it creates a real, verified session
+    const { data, error } = await supabaseClient.auth.signInWithIdToken({
+      provider: 'google',
+      token: userData,
+    });
+
+    if (error) {
+      console.error('Supabase sign-in error:', error);
+      showToast('Sign in failed. Please try again.');
+      return;
+    }
+
+    // IMPORTANT: id now comes from Supabase's own user table, not Google's payload.
+    // This is the id your RLS policies check against (auth.uid()).
     currentUser = {
-      id: payload.sub,
+      id: data.user.id,
       email: payload.email,
       name: payload.name,
       picture: payload.picture,
     };
+
     localStorage.setItem('myLibrary_user', JSON.stringify(currentUser));
-    books.length = 0; // Clear demo books for new user
-    // persist an empty book list for this new user
-    try { localStorage.setItem(`myLibrary_books_${currentUser.id}`, JSON.stringify([])); } catch (e) {}
-    updatePageState();
+        await loadUserBooks(currentUser.id);
+        updatePageState();
     renderGrid();
     renderShelves();
     updateBookCount();
   } catch (err) {
+    console.error(err);
     showToast('Sign in failed. Please try again.');
   }
 }
@@ -601,7 +636,7 @@ document.querySelectorAll('.star').forEach(function (star) {
 });
 
 // ── SAVE BOOK ──
-function saveBook() {
+async function saveBook() {
   if (!selectedBook) return;
   const shelf = document.getElementById('shelf-select').value;
   const notes = document.getElementById('book-notes').value.trim();
@@ -612,20 +647,42 @@ function saveBook() {
     return;
   }
 
-  const newBook = {
-    id: books.length > 0 ? Math.max(...books.map(b => b.id)) + 1 : 1,
+const newBookForDb = {
+    user_id: currentUser.id,
     title: selectedBook.title,
     author: selectedBook.author,
     cover: selectedBook.cover,
-    coverBg: '#888780',
-    coverText: '#F0EDE6',
+    cover_bg: '#888780',
+    cover_text: '#F0EDE6',
     shelf,
     rating: currentRating,
     notes,
   };
-  books.push(newBook);
-  // persist for signed-in users
-  try { persistBooks(); } catch (e) {}
+
+  const { data, error } = await supabaseClient
+    .from('books')
+    .insert(newBookForDb)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error saving book:', error);
+    showToast('Could not save book. Please try again.');
+    return;
+  }
+
+  books.push({
+    id: data.id,
+    title: data.title,
+    author: data.author,
+    cover: data.cover,
+    coverBg: data.cover_bg,
+    coverText: data.cover_text,
+    shelf: data.shelf,
+    rating: data.rating,
+    notes: data.notes,
+  });
+
   renderGrid();
   renderShelves();
   updateBookCount();
@@ -982,7 +1039,8 @@ function saveProfile() {
   closeProfile();
 }
 
-function signOut() {
+async function signOut() {
+  await supabaseClient.auth.signOut();
   currentUser = null;
   localStorage.removeItem('myLibrary_user');
   showOnboarding();
