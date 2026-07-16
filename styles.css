@@ -258,6 +258,13 @@ body.modal-open {
 
 .book-card {
   cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.book-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  cursor: grabbing;
 }
 
 .book-cover {
@@ -300,6 +307,44 @@ body.modal-open {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ── AUTHOR SEARCH SECTIONS ── */
+.author-search-section {
+  margin-bottom: 28px;
+}
+
+.author-search-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #888780;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(44, 44, 42, 0.1);
+}
+
+.author-search-heading em {
+  font-style: normal;
+  color: #2C2C2A;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+.author-search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.library-empty-search {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #A0998E;
+  font-size: 14px;
+  padding: 48px 0;
 }
 
 /* ── SHELF VIEW ── */
@@ -1527,6 +1572,24 @@ body.modal-open {
   background: #FDEDEC;
   color: #A93226;
   border-color: #EC7063;
+}
+
+.btn-edit-book {
+  background: none;
+  border: 0.5px solid #C8C2B6;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 12px;
+  color: #5F5E5A;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: all 0.2s;
+}
+
+.btn-edit-book:hover {
+  background: #EDE8DF;
+  color: #2C2C2A;
+  border-color: #B8965A;
 }
 
 /* ── FILTER DROPDOWN ── */

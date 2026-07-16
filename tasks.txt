@@ -1,6 +1,5 @@
 next steps
 
-1. Add search via authors
 2. Fix the shelf view
 3. optimize the search for books that cannot be found
-4. also to edit a book details after it has been added
+

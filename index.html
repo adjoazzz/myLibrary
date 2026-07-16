@@ -75,7 +75,7 @@
     <div class="floating-nav">
       <div class="nav-count" id="book-count">0 Books</div>
       <div class="nav-divider"></div>
-      <input class="search-input" type="text" placeholder="Search book" />
+      <input class="search-input" type="text" placeholder="Search by title or author" />
       <div class="filter-wrapper"><button class="nav-btn" id="filter-btn" onclick="toggleFilter()">Filter</button><div class="filter-dropdown" id="filter-dropdown"></div></div>
       <button class="nav-add" id="nav-add-btn" onclick="openModal()">Add book</button>
       <div class="nav-divider"></div>
@@ -111,6 +111,7 @@
         </div>
         <div class="book-focus-footer">
           <button class="btn-delete-book" id="btn-delete-book" onclick="deleteFocusedBook()">Delete book</button>
+          <button class="btn-edit-book" id="btn-edit-book" onclick="openEditModal()">Edit book</button>
           <button class="btn-close-focus" onclick="closeFocus()">Close</button>
         </div>
       </div>
@@ -141,7 +142,7 @@
       <!-- DETAIL VIEW -->
       <div id="modal-detail-view" class="modal-detail-view" style="display:none;">
         <div class="modal-header">
-          <div class="modal-title">Add to library</div>
+          <div class="modal-title" id="detail-modal-title">Add to library</div>
           <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
         <div class="detail-book-info">
@@ -179,8 +180,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-back" onclick="goBackToSearch()">← Back</button>
-          <button class="btn-save" onclick="saveBook()">Add to library</button>
+          <button class="btn-back" id="detail-back-btn" onclick="goBackToSearch()">← Back</button>
+          <button class="btn-save" id="detail-save-btn" onclick="saveBook()">Add to library</button>
         </div>
       </div>
     </div>

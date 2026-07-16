@@ -28,6 +28,7 @@ async function loadUserBooks(userId) {
       notes: row.notes,
     });
   });
+  applyCustomBookOrder();
 }
 
 
@@ -187,7 +188,17 @@ const customShelves = [];
 // ── RENDER GRID ──
 function renderGrid() {
   const container = document.getElementById('grid-books');
+  if (!container) return;
   container.innerHTML = '';
+
+  const isReorderable = (activeFilter === null) && (!document.querySelector('.search-input') || !document.querySelector('.search-input').value.trim());
+
+  if (isReorderable) {
+    container.addEventListener('dragover', handleDragOver);
+  } else {
+    container.removeEventListener('dragover', handleDragOver);
+  }
+
   books.forEach(function (book) {
     const card = document.createElement('div');
     card.className = 'book-card';
@@ -201,10 +212,137 @@ function renderGrid() {
       <div class="book-title">${book.title}</div>
       <div class="book-author">${book.author}</div>
     `;
+
     card.addEventListener('click', function () { openFocus(book); });
+
+    if (isReorderable) {
+      card.setAttribute('draggable', 'true');
+      card.dataset.id = book.id;
+
+      card.addEventListener('dragstart', function (e) {
+        e.stopPropagation();
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', book.id);
+      });
+
+      card.addEventListener('dragend', function (e) {
+        card.classList.remove('dragging');
+        const newOrderIds = Array.from(container.querySelectorAll('.book-card')).map(el => el.dataset.id);
+        reorderBooksArray(newOrderIds);
+      });
+    }
+
     container.appendChild(card);
   });
 }
+
+function handleDragOver(e) {
+  e.preventDefault();
+  const draggingCard = document.querySelector('.book-card.dragging');
+  if (!draggingCard) return;
+
+  const container = document.getElementById('grid-books');
+  const closest = getDragAfterElement(container, e.clientY, e.clientX);
+
+  if (closest.element == null) {
+    container.appendChild(draggingCard);
+  } else {
+    if (closest.isBefore) {
+      container.insertBefore(draggingCard, closest.element);
+    } else {
+      container.insertBefore(draggingCard, closest.element.nextSibling);
+    }
+  }
+}
+
+function getDragAfterElement(container, y, x) {
+  const draggableElements = [...container.querySelectorAll('.book-card:not(.dragging)')];
+
+  let closest = { distance: Infinity, element: null, isBefore: true };
+
+  draggableElements.forEach(child => {
+    const box = child.getBoundingClientRect();
+    const centerX = box.left + box.width / 2;
+    const centerY = box.top + box.height / 2;
+    const distance = Math.hypot(x - centerX, y - centerY);
+
+    if (distance < closest.distance) {
+      const isBefore = (x < centerX);
+      closest = { distance, element: child, isBefore };
+    }
+  });
+
+  return closest;
+}
+
+function reorderBooksArray(newOrderIds) {
+  const bookMap = {};
+  books.forEach(b => {
+    bookMap[b.id] = b;
+  });
+
+  const reordered = [];
+  newOrderIds.forEach(id => {
+    if (bookMap[id]) {
+      reordered.push(bookMap[id]);
+      delete bookMap[id];
+    }
+  });
+
+  books.forEach(b => {
+    if (bookMap[b.id]) {
+      reordered.push(b);
+    }
+  });
+
+  books.length = 0;
+  reordered.forEach(b => books.push(b));
+
+  saveCustomBookOrder();
+  try { persistBooks(); } catch (e) {}
+}
+
+function saveCustomBookOrder() {
+  if (!currentUser) return;
+  const orderIds = books.map(b => b.id);
+  localStorage.setItem(`myLibrary_book_order_${currentUser.id}`, JSON.stringify(orderIds));
+}
+
+function applyCustomBookOrder() {
+  if (!currentUser) return;
+  const stored = localStorage.getItem(`myLibrary_book_order_${currentUser.id}`);
+  if (!stored) return;
+  try {
+    const orderIds = JSON.parse(stored);
+    if (!Array.isArray(orderIds)) return;
+
+    const bookMap = {};
+    books.forEach(b => {
+      bookMap[b.id] = b;
+    });
+
+    const reordered = [];
+    orderIds.forEach(id => {
+      if (bookMap[id]) {
+        reordered.push(bookMap[id]);
+        delete bookMap[id];
+      }
+    });
+
+    books.forEach(b => {
+      if (bookMap[b.id]) {
+        reordered.push(b);
+      }
+    });
+
+    books.length = 0;
+    reordered.forEach(b => books.push(b));
+  } catch (e) {
+    console.error('Error applying custom book order:', e);
+  }
+}
+
 
 // ── RENDER SHELVES ──
 function renderShelves() {
@@ -327,6 +465,7 @@ function deleteFocusedBook() {
   if (index !== -1) {
     const title = focusedBook.title;
     books.splice(index, 1);
+    saveCustomBookOrder();
     try { persistBooks(); } catch (e) {}
     closeFocus();
     applyFilter(activeFilter);
@@ -370,6 +509,8 @@ function closeModal() {
   const modal = document.getElementById('add-book-modal');
   if (modal) modal.classList.remove('open');
   selectedBook = null;
+  editMode = false;
+  editingBook = null;
 }
 
 function bindModalTriggers() {
@@ -578,10 +719,18 @@ function disableAddDetails() {
 }
 
 // ── DETAIL VIEW ──
+let editMode = false;   // true when editing an existing book
+let editingBook = null; // the book object being edited
+
 function showDetailView() {
   if (!selectedBook) return;
   document.getElementById('modal-search-view').style.display = 'none';
   document.getElementById('modal-detail-view').style.display = 'flex';
+
+  // Titles / button labels depend on mode
+  document.getElementById('detail-modal-title').textContent = editMode ? 'Edit book' : 'Add to library';
+  document.getElementById('detail-save-btn').textContent = editMode ? 'Save changes' : 'Add to library';
+  document.getElementById('detail-back-btn').style.display = editMode ? 'none' : '';
 
   const coverEl = document.getElementById('detail-cover');
   if (selectedBook.cover) {
@@ -592,16 +741,48 @@ function showDetailView() {
 
   document.getElementById('detail-title').textContent = selectedBook.title;
   document.getElementById('detail-author').textContent = selectedBook.author;
-  document.getElementById('book-notes').value = '';
-  document.getElementById('shelf-select').value = '';
+
   refreshShelfOptions();
-  setRating(0);
+
+  if (editMode && editingBook) {
+    // Pre-fill existing values
+    document.getElementById('book-notes').value = editingBook.notes || '';
+    document.getElementById('shelf-select').value = editingBook.shelf || '';
+    setRating(editingBook.rating || 0);
+  } else {
+    document.getElementById('book-notes').value = '';
+    document.getElementById('shelf-select').value = '';
+    setRating(0);
+  }
 }
 
 function goBackToSearch() {
   document.getElementById('modal-search-view').style.display = 'flex';
   document.getElementById('modal-detail-view').style.display = 'none';
 }
+
+// Open modal in edit mode for an existing book
+function openEditModal() {
+  if (!focusedBook) return;
+  editMode = true;
+  editingBook = focusedBook;
+  selectedBook = {
+    title: focusedBook.title,
+    author: focusedBook.author,
+    cover: focusedBook.cover,
+    description: '',
+  };
+
+  closeFocus();
+
+  const modal = document.getElementById('add-book-modal');
+  document.body.classList.add('modal-open');
+  modal.classList.add('open');
+  document.getElementById('modal-search-view').style.display = 'none';
+  showDetailView();
+}
+
+
 
 // ── SHELF OPTIONS — keeps built-ins + any custom ones in sync ──
 const builtInShelves = ['Fiction', 'Nonfiction', 'Design', 'Self-help', 'Poetry'];
@@ -661,6 +842,40 @@ async function saveBook() {
   if (!shelf) {
     document.getElementById('shelf-select').classList.add('error');
     setTimeout(() => document.getElementById('shelf-select').classList.remove('error'), 1500);
+    return;
+  }
+
+  if (editMode && editingBook) {
+    const { data, error } = await supabaseClient
+      .from('books')
+      .update({
+        shelf,
+        rating: currentRating,
+        notes,
+      })
+      .eq('id', editingBook.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating book:', error);
+      showToast('Could not update book. Please try again.');
+      return;
+    }
+
+    const idx = books.findIndex(b => b.id === editingBook.id);
+    if (idx !== -1) {
+      books[idx].shelf = data.shelf;
+      books[idx].rating = data.rating;
+      books[idx].notes = data.notes;
+    }
+
+    try { persistBooks(); } catch (e) {}
+
+    applyFilter(activeFilter);
+    updatePageState();
+    showToast(`"${selectedBook.title}" updated`);
+    closeModal();
     return;
   }
 
@@ -753,49 +968,99 @@ document.querySelector('.search-input').addEventListener('input', function () {
 });
 
 function filterLocalLibrary(query) {
-  const q = query.toLowerCase();
-  const filtered = q.length < 1
-    ? books
-    : books.filter(function (b) {
-        return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q);
-      });
+  const q = query.toLowerCase().trim();
+
+  if (q.length < 1) {
+    // No query — restore full grid
+    document.getElementById('book-count').textContent = books.length + ' Books';
+    renderGrid();
+    return;
+  }
+
+  // Separate title-only matches from author-only matches
+  const titleMatches = books.filter(function (b) {
+    return b.title.toLowerCase().includes(q);
+  });
+  const authorMatches = books.filter(function (b) {
+    return b.author.toLowerCase().includes(q) && !b.title.toLowerCase().includes(q);
+  });
+
+  const allMatched = [...titleMatches, ...authorMatches];
 
   // Update count display
   const countEl = document.getElementById('book-count');
-  if (q.length > 0) {
-    countEl.textContent = filtered.length + (filtered.length === 1 ? ' Result' : ' Results');
-  } else {
-    countEl.textContent = books.length + ' Books';
-  }
+  countEl.textContent = allMatched.length + (allMatched.length === 1 ? ' Result' : ' Results');
 
-  // Re-render with filtered set
   const gridContainer = document.getElementById('grid-books');
-  if (gridContainer) {
-    gridContainer.innerHTML = '';
-    filtered.forEach(function (book) {
-      const card = document.createElement('div');
-      card.className = 'book-card';
-      const coverBg = book.coverBg || '#888780';
-      const coverText = book.coverText || '#F0EDE6';
-      card.innerHTML = `
-        <div class="book-cover">
-          ${book.cover
-            ? `<img src="${book.cover}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div class=\'book-cover-placeholder\' style=\'background:${coverBg};\' ><span style=\'color:${coverText};\' >${book.title}</span></div>'" />`
-            : `<div class="book-cover-placeholder" style="background:${coverBg};"><span style="color:${coverText};">${book.title}</span></div>`
-          }
-        </div>
-        <div class="book-title">${book.title}</div>
-        <div class="book-author">${book.author}</div>
-      `;
-      card.addEventListener('click', function () { openFocus(book); });
-      gridContainer.appendChild(card);
-    });
+  if (!gridContainer) return;
+  gridContainer.innerHTML = '';
+
+  if (allMatched.length === 0) {
+    gridContainer.innerHTML = '<div class="library-empty-search">No books match "' + query + '"</div>';
+    return;
   }
 
-  if (filtered.length === 0 && q.length > 0) {
-    if (gridContainer) {
-      gridContainer.innerHTML = '<div class="library-empty-search">No books match "' + query + '"</div>';
+  function makeBookCard(book) {
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    const coverBg = book.coverBg || '#888780';
+    const coverText = book.coverText || '#F0EDE6';
+    card.innerHTML = `
+      <div class="book-cover">
+        ${book.cover
+          ? `<img src="${book.cover}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div class=\\'book-cover-placeholder\\' style=\\'background:${coverBg};\\' ><span style=\\'color:${coverText};\\' >${book.title}</span></div>'" />`
+          : `<div class="book-cover-placeholder" style="background:${coverBg};"><span style="color:${coverText};">${book.title}</span></div>`
+        }
+      </div>
+      <div class="book-title">${book.title}</div>
+      <div class="book-author">${book.author}</div>
+    `;
+    card.addEventListener('click', function () { openFocus(book); });
+    return card;
+  }
+
+  // If there are author-only matches, group them under "Books by [Author]" headings
+  if (authorMatches.length > 0) {
+    // Render title matches first (if any) with no label when also have author section
+    if (titleMatches.length > 0) {
+      const titleSection = document.createElement('div');
+      titleSection.className = 'author-search-section';
+      const titleHeading = document.createElement('div');
+      titleHeading.className = 'author-search-heading';
+      titleHeading.textContent = 'Matching titles';
+      titleSection.appendChild(titleHeading);
+      const titleGrid = document.createElement('div');
+      titleGrid.className = 'author-search-grid';
+      titleMatches.forEach(function (book) { titleGrid.appendChild(makeBookCard(book)); });
+      titleSection.appendChild(titleGrid);
+      gridContainer.appendChild(titleSection);
     }
+
+    // Group author matches by author name
+    const byAuthor = {};
+    authorMatches.forEach(function (book) {
+      if (!byAuthor[book.author]) byAuthor[book.author] = [];
+      byAuthor[book.author].push(book);
+    });
+
+    Object.keys(byAuthor).forEach(function (authorName) {
+      const section = document.createElement('div');
+      section.className = 'author-search-section';
+
+      const heading = document.createElement('div');
+      heading.className = 'author-search-heading';
+      heading.innerHTML = `Books by <em>${authorName}</em>`;
+      section.appendChild(heading);
+
+      const grid = document.createElement('div');
+      grid.className = 'author-search-grid';
+      byAuthor[authorName].forEach(function (book) { grid.appendChild(makeBookCard(book)); });
+      section.appendChild(grid);
+      gridContainer.appendChild(section);
+    });
+  } else {
+    // Only title matches — render flat grid as before
+    titleMatches.forEach(function (book) { gridContainer.appendChild(makeBookCard(book)); });
   }
 }
 
