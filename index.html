@@ -42,7 +42,7 @@
       <img class="empty-state-illustration" src="assets/myLIbrary%20LOGO.gif" alt="Empty library illustration" />
       <div class="empty-state-header">You have no books</div>
       <div class="empty-state-description">Start building your library by adding your first book.</div>
-      <button class="btn-add-details btn-open-add-book enabled" onclick="goToAddBook()">Add</button>
+      <button class="btn-add-details btn-open-add-book enabled" onclick="goToAddBook()">Add a book</button>
     </div>
   </div>
 
@@ -77,7 +77,7 @@
       <div class="nav-divider"></div>
       <input class="search-input" type="text" placeholder="Search by title or author" />
       <div class="filter-wrapper"><button class="nav-btn" id="filter-btn" onclick="toggleFilter()">Filter</button><div class="filter-dropdown" id="filter-dropdown"></div></div>
-      <button class="nav-add" id="nav-add-btn" onclick="openModal()">Add</button>
+      <button class="nav-add" id="nav-add-btn" onclick="openModal()">Add book</button>
       <div class="nav-divider"></div>
       <div class="toggle-group">
         <button class="nav-btn active" id="btn-grid" onclick="setView('grid', this)">Grid</button>
@@ -121,91 +121,67 @@
   <!-- ADD BOOK MODAL -->
   <div class="modal-overlay" id="add-book-modal">
     <div class="modal">
-      <div class="modal-tab-bar">
-        <button class="modal-tab active" data-modal-tab="books">Books</button>
-        <button class="modal-tab" data-modal-tab="items">Items</button>
-      </div>
-
-      <div id="modal-books-panel" class="modal-panel active">
-        <!-- SEARCH VIEW -->
-        <div id="modal-search-view" class="modal-search-view">
-          <div class="modal-header">
-            <div class="modal-title">Add a book</div>
-            <button class="modal-close" onclick="closeModal()">✕</button>
-          </div>
-          <div class="search-bar">
-            <input id="book-search-input" type="text" placeholder="Search book" autocomplete="off" />
-          </div>
-          <div class="search-results-label" id="results-label" style="display:none;">Search results</div>
-          <div class="search-results" id="search-results">
-            <div class="search-empty" id="search-empty" style="display:none;">No books found. Try a different search.</div>
-          </div>
-          <div class="modal-search-footer">
-            <button class="btn-add-details" id="btn-add-details" onclick="showDetailView()">Add details</button>
-          </div>
-        </div>
-
-        <!-- DETAIL VIEW -->
-        <div id="modal-detail-view" class="modal-detail-view" style="display:none;">
-          <div class="modal-header">
-            <div class="modal-title" id="detail-modal-title">Add to library</div>
-            <button class="modal-close" onclick="closeModal()">✕</button>
-          </div>
-          <div class="detail-book-info">
-            <div class="detail-cover" id="detail-cover"></div>
-            <div class="detail-meta">
-              <div class="detail-title" id="detail-title"></div>
-              <div class="detail-author" id="detail-author"></div>
-            </div>
-          </div>
-          <div class="detail-fields">
-            <div>
-              <div class="field-label">Rating</div>
-              <div class="stars">
-                <span class="star" data-value="1">★</span>
-                <span class="star" data-value="2">★</span>
-                <span class="star" data-value="3">★</span>
-                <span class="star" data-value="4">★</span>
-                <span class="star" data-value="5">★</span>
-              </div>
-            </div>
-            <div>
-              <div class="field-label">Add to shelf</div>
-              <select class="shelf-select" id="shelf-select">
-                <option value="" disabled selected>Choose a shelf…</option>
-                <option value="Fiction">Fiction</option>
-                <option value="Nonfiction">Nonfiction</option>
-                <option value="Design">Design</option>
-                <option value="Self-help">Self-help</option>
-                <option value="Poetry">Poetry</option>
-              </select>
-            </div>
-            <div>
-              <div class="field-label">Notes</div>
-              <textarea class="notes-input" id="book-notes" placeholder="Your thoughts on this book…"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-back" id="detail-back-btn" onclick="goBackToSearch()">← Back</button>
-            <button class="btn-save" id="detail-save-btn" onclick="saveBook()">Add to library</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="modal-items-panel" class="modal-panel" style="display:none;">
+      <!-- SEARCH VIEW -->
+      <div id="modal-search-view" class="modal-search-view">
         <div class="modal-header">
-          <div class="modal-title">Shelf items</div>
+          <div class="modal-title">Add a book</div>
           <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
-        <div class="modal-items-body">
-          <div class="items-upload-row">
-            <label class="upload-item-button" for="item-upload-input">Upload images</label>
-            <input id="item-upload-input" type="file" accept="image/*" multiple />
-          </div>
-          <div class="items-gallery" id="items-gallery"></div>
+        <div class="search-bar">
+          <input id="book-search-input" type="text" placeholder="Search book" autocomplete="off" />
+        </div>
+        <div class="search-results-label" id="results-label" style="display:none;">Search results</div>
+        <div class="search-results" id="search-results">
+          <div class="search-empty" id="search-empty" style="display:none;">No books found. Try a different search.</div>
         </div>
         <div class="modal-search-footer">
-          <button class="btn-add-details enabled" onclick="closeModal()">Done</button>
+          <button class="btn-add-details" id="btn-add-details" onclick="showDetailView()">Add details</button>
+        </div>
+      </div>
+
+      <!-- DETAIL VIEW -->
+      <div id="modal-detail-view" class="modal-detail-view" style="display:none;">
+        <div class="modal-header">
+          <div class="modal-title" id="detail-modal-title">Add to library</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="detail-book-info">
+          <div class="detail-cover" id="detail-cover"></div>
+          <div class="detail-meta">
+            <div class="detail-title" id="detail-title"></div>
+            <div class="detail-author" id="detail-author"></div>
+          </div>
+        </div>
+        <div class="detail-fields">
+          <div>
+            <div class="field-label">Rating</div>
+            <div class="stars">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Add to shelf</div>
+            <select class="shelf-select" id="shelf-select">
+              <option value="" disabled selected>Choose a shelf…</option>
+              <option value="Fiction">Fiction</option>
+              <option value="Nonfiction">Nonfiction</option>
+              <option value="Design">Design</option>
+              <option value="Self-help">Self-help</option>
+              <option value="Poetry">Poetry</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">Notes</div>
+            <textarea class="notes-input" id="book-notes" placeholder="Your thoughts on this book…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-back" id="detail-back-btn" onclick="goBackToSearch()">← Back</button>
+          <button class="btn-save" id="detail-save-btn" onclick="saveBook()">Add to library</button>
         </div>
       </div>
     </div>
