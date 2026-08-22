@@ -343,6 +343,109 @@ function applyCustomBookOrder() {
   }
 }
 
+// ── SPINE COLOR EXTRACTION ──
+const spineColorCache = {}; // keyed by cover URL -> { bg, text }
+
+// function getSpineTilt(book) {
+//   const str = String(book.id || book.title || '');
+//   let hash = 0;
+//   for (let i = 0; i < str.length; i++) {
+//     hash = (hash * 31 + str.charCodeAt(i)) | 0;
+//   }
+//   const rand = Math.abs(hash) % 100;
+
+//   if (rand < 60) return 0;
+
+//   const tiltPool = [-6, -4, -3, 3, 4, 6];
+//   return tiltPool[Math.abs(hash) % tiltPool.length];
+// }
+
+// function applySpineTilt(spineEl, book) {
+//   const tilt = getSpineTilt(book);
+//   spineEl.style.setProperty('--tilt', tilt + 'deg');
+
+//   if (tilt !== 0) {
+//     const spineHeight = 130; // must match .spine height in CSS
+//     const radians = Math.abs(tilt) * Math.PI / 180;
+//     const shift = Math.round(spineHeight * Math.sin(radians)) + 4; // +4px buffer
+
+//     if (tilt > 0) {
+//       spineEl.style.marginRight = shift + 'px';
+//     } else {
+//       spineEl.style.marginLeft = shift + 'px';
+//     }
+//   }
+// }
+
+function getReadableTextColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.55 ? '#2C2C2A' : '#F0EDE6';
+}
+
+function applySpineColor(spineEl, color) {
+  if (!spineEl) return;
+  const placeholder = spineEl.querySelector('.spine-placeholder');
+  if (!placeholder) return;
+  placeholder.style.setProperty('--spine-bg', color.bg);
+  placeholder.style.setProperty('--spine-text', color.text);
+}
+
+function extractSpineColor(book, spineEl) {
+  if (!book.cover) return;
+
+  if (spineColorCache[book.cover]) {
+    applySpineColor(spineEl, spineColorCache[book.cover]);
+    return;
+  }
+
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+
+  img.onload = function () {
+    try {
+      const size = 20;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 200) continue; // skip transparent pixels
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count++;
+      }
+      if (count === 0) return; // nothing usable — keep gray fallback
+
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+      const bg = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      const text = getReadableTextColor(bg);
+
+      const result = { bg, text };
+      spineColorCache[book.cover] = result;
+      applySpineColor(spineEl, result);
+    } catch (e) {
+      // canvas got tainted (no CORS) — keep gray fallback
+    }
+  };
+
+  img.onerror = function () {
+    // image failed to load — keep gray fallback
+  };
+
+  const proxiedUrl = 'https://images.weserv.nl/?url=' + encodeURIComponent(book.cover.replace(/^https?:\/\//, ''));
+  img.src = proxiedUrl;
+}
 
 // ── RENDER SHELVES ──
 function renderShelves() {
@@ -355,50 +458,61 @@ function renderShelves() {
   const container = document.getElementById('shelf-rows');
   container.innerHTML = '';
 
-  const shelfNames = Object.keys(shelves);
-  for (let i = 0; i < shelfNames.length; i += 2) {
-    const row = document.createElement('div');
-    row.className = 'shelf-row';
+  Object.keys(shelves).forEach(function (name) {
+    const unit = document.createElement('div');
+    unit.className = 'shelf-unit';
+    unit.innerHTML = `
+      <div class="section-label">${name}</div>
+      <div class="shelf-books" id="shelf-${name}"></div>
+      <div class="shelf-wood"></div>
+    `;
+    container.appendChild(unit);
 
-    [shelfNames[i], shelfNames[i + 1]].forEach(function (name) {
-      if (!name) return;
-      const unit = document.createElement('div');
-      unit.className = 'shelf-unit';
-      unit.innerHTML = `
-        <div class="section-label">${name}</div>
-        <div class="shelf-books" id="shelf-${name}"></div>
-        <div class="shelf-wood"></div>
-      `;
-      row.appendChild(unit);
+    const shelfEl = unit.querySelector('.shelf-books');
+    shelves[name].forEach(function (book) {
+      const spine = document.createElement('div');
+      spine.className = 'spine';
 
-      const shelfEl = unit.querySelector('.shelf-books');
-      shelves[name].forEach(function (book) {
-        const spine = document.createElement('div');
-        spine.className = 'spine';
-        // use CSS variables so the stylesheet can layer texture/effects while
-        // still using the book's chosen colors
-        spine.innerHTML = `
-          <div class="spine-inner">
-            <div class="spine-front" style="--spine-bg:${book.coverBg}; --spine-text:${book.coverText};">
-              <span>${book.title}</span>
-            </div>
-            <div class="spine-side" style="--spine-bg:${book.coverBg};"></div>
-            <div class="spine-top"></div>
-            <div class="spine-back" style="--spine-bg:${book.coverBg}; --spine-text:${book.coverText};">
-              ${book.cover
-                ? `<img src="${book.cover}" alt="${book.title}" />`
-                : `<div class="spine-back-placeholder" style="--spine-bg:${book.coverBg};"><span style="--spine-text:${book.coverText};">${book.title}</span></div>`
-              }
-            </div>
-          </div>
-        `;
-        spine.addEventListener('click', function () { openFocus(book); });
-        shelfEl.appendChild(spine);
-      });
+      const cached = book.cover ? spineColorCache[book.cover] : null;
+      const initialBg = cached ? cached.bg : book.coverBg;
+      const initialText = cached ? cached.text : book.coverText;
+      spine.innerHTML = `<div class="spine-placeholder" style="--spine-bg:${initialBg}; --spine-text:${initialText};"><span>${book.title}</span></div>`;
+      // applySpineTilt(spine, book);
+      spine.addEventListener('click', function () { openFocus(book); });
+      shelfEl.appendChild(spine);
+
+      if (book.cover && !cached) {
+        extractSpineColor(book, spine);
+      }
     });
 
-    container.appendChild(row);
-  }
+    addShelfRowLines(shelfEl);
+  });
+}
+
+// ── SHELF ROW LINES — draws a divider where a category's spines wrap to a new row ──
+function addShelfRowLines(shelfEl) {
+  requestAnimationFrame(function () {
+    const spines = Array.from(shelfEl.querySelectorAll('.spine'));
+    if (spines.length === 0) return;
+
+    shelfEl.querySelectorAll('.shelf-row-line').forEach(el => el.remove());
+
+    const rowTops = [];
+    spines.forEach(function (spine) {
+      const top = spine.offsetTop;
+      if (!rowTops.includes(top)) rowTops.push(top);
+    });
+
+    if (rowTops.length <= 1) return; // everything fit on one row — nothing to draw
+
+    rowTops.slice(1).forEach(function (top) {
+      const line = document.createElement('div');
+      line.className = 'shelf-row-line';
+      line.style.top = (top - 6) + 'px';
+      shelfEl.appendChild(line);
+    });
+  });
 }
 
 // ── BOOK FOCUS OVERLAY ──
@@ -1257,23 +1371,12 @@ function renderFilteredView(shelf) {
   shelfBooks.className = 'shelf-books';
 
   filtered.forEach(function (book) {
-    const spine = document.createElement('div');
-    spine.className = 'spine';
-    spine.innerHTML = `
-      <div class="spine-inner">
-        <div class="spine-front" style="background:${book.coverBg};">
-          <span style="color:${book.coverText};">${book.title}</span>
-        </div>
-        <div class="spine-side" style="background:${book.coverBg};"></div>
-        <div class="spine-top"></div>
-        <div class="spine-back" style="background:${book.coverBg};">
-          ${book.cover
-            ? `<img src="${book.cover}" alt="${book.title}" />`
-            : `<div class="spine-back-placeholder" style="background:${book.coverBg};"><span style="color:${book.coverText};">${book.title}</span></div>`
-          }
-        </div>
-      </div>
-    `;
+const spine = document.createElement('div');
+        spine.className = 'spine';
+      spine.innerHTML = book.cover
+      ? `<img class="spine-cover-img" src="${book.cover}" alt="${book.title}" onerror="this.outerHTML='<div class=\\'spine-placeholder\\' style=\\'--spine-bg:${book.coverBg};--spine-text:${book.coverText};\\'><span>${book.title.replace(/'/g, "&#39;")}</span></div>'" />`
+      : `<div class="spine-placeholder" style="--spine-bg:${book.coverBg}; --spine-text:${book.coverText};"><span>${book.title}</span></div>`;
+    // applySpineTilt(spine, book);
     spine.addEventListener('click', function () { openFocus(book); });
     shelfBooks.appendChild(spine);
   });
