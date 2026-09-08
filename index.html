@@ -92,29 +92,69 @@
 
   <!-- BOOK FOCUS OVERLAY -->
   <div class="book-focus-overlay" id="book-focus-overlay">
-    <div class="book-focus-wrapper">
-      <div class="book-focus-cover-float" id="focus-cover"></div>
+    <div class="book-focus-container">
+      <div class="focus-top-bar">
+        <button class="focus-top-close" onclick="closeFocus()">Put it back ✕</button>
+      </div>
       <div class="book-focus-card" id="focus-card">
-        <div class="book-focus-top">
-          <div class="book-focus-meta">
-            <div class="book-focus-title" id="focus-title"></div>
-            <div class="book-focus-author" id="focus-author"></div>
-            <div class="book-focus-shelf" id="focus-shelf"></div>
-            <div class="book-focus-rating" id="focus-stars"></div>
+        <!-- LEFT LEATHER PANEL -->
+        <div class="book-focus-left">
+          <div class="book-focus-cover-3d-wrap">
+            <div class="book-focus-cover-3d" id="focus-cover"></div>
+          </div>
+          <div class="focus-ex-libris">
+            <div class="ex-libris-monogram" id="focus-monogram">N · A</div>
+            <div class="ex-libris-label">EX LIBRIS</div>
+            <div class="ex-libris-name" id="focus-owner-name">Nana Adjoa</div>
           </div>
         </div>
-        <div class="book-focus-body">
-          <div>
-            <div class="focus-field-label">Notes</div>
+
+        <!-- RIGHT PARCHMENT PANEL -->
+        <div class="book-focus-right">
+          <div class="focus-bookmark-ribbon" title="Bookmark Ribbon"></div>
+          <div class="book-focus-header">
+            <div class="focus-badge" id="focus-badge">A FIVE-STAR FAVORITE</div>
+            <h2 class="book-focus-title" id="focus-title"></h2>
+            <div class="book-focus-author" id="focus-author"></div>
+            <div class="book-focus-rating-wrap">
+              <div class="book-focus-rating" id="focus-stars"></div>
+              <span class="focus-rating-label">My rating</span>
+            </div>
+          </div>
+
+          <div class="focus-meta-grid">
+            <div class="focus-meta-col">
+              <div class="focus-meta-label">STATUS</div>
+              <div class="focus-meta-value" id="focus-status">Read</div>
+            </div>
+            <div class="focus-meta-col">
+              <div class="focus-meta-label">SHELF</div>
+              <div class="focus-meta-value" id="focus-shelf">Favorites</div>
+            </div>
+            <div class="focus-meta-col">
+              <div class="focus-meta-label">RATING</div>
+              <div class="focus-meta-value" id="focus-rating-val">5 Stars</div>
+            </div>
+          </div>
+
+          <div class="book-focus-body">
+            <div class="focus-field-label">BETWEEN THESE PAGES</div>
             <div class="focus-notes" id="focus-notes"></div>
           </div>
-        </div>
-        <div class="book-focus-footer">
-          <button class="btn-delete-book" id="btn-delete-book" onclick="deleteFocusedBook()">Delete book</button>
-          <button class="btn-edit-book" id="btn-edit-book" onclick="openEditModal()">Edit book</button>
-          <button class="btn-close-focus" onclick="closeFocus()">Close</button>
+
+          <div class="book-focus-footer">
+            <div class="focus-external-links">
+              <a href="#" target="_blank" rel="noopener" id="focus-link-goodreads" class="focus-link">On Goodreads ↗</a>
+              <a href="#" target="_blank" rel="noopener" id="focus-link-amazon" class="focus-link">View on Amazon ↗</a>
+            </div>
+            <div class="focus-action-btns">
+              <button class="btn-edit-book" id="btn-edit-book" onclick="openEditModal()">Edit book</button>
+              <button class="btn-delete-book" id="btn-delete-book" onclick="deleteFocusedBook()">Delete book</button>
+            </div>
+          </div>
         </div>
       </div>
+      <div class="focus-esc-hint">A moment with a good book. <kbd>esc</kbd> to return.</div>
     </div>
   </div>
 

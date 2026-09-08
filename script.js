@@ -521,52 +521,98 @@ let focusedBook = null;
 function openFocus(book) {
   focusedBook = book;
   const overlay = document.getElementById('book-focus-overlay');
-  const coverFloat = document.getElementById('focus-cover');
   const card = document.getElementById('focus-card');
+  const coverEl = document.getElementById('focus-cover');
 
-  coverFloat.classList.remove('closing');
   card.classList.remove('closing');
 
   if (book.cover) {
-    coverFloat.innerHTML = `<img src="${book.cover}" alt="${book.title}" onerror="this.parentElement.innerHTML='<div class=\'book-focus-cover-placeholder\' style=\'background:${book.coverBg};\' ><span style=\'color:${book.coverText};\' >${book.title}</span></div>'; this.parentElement.style.background='${book.coverBg}';" />`;
-    coverFloat.style.background = '';
+    coverEl.innerHTML = `<img src="${book.cover}" alt="${book.title}" onerror="this.parentElement.innerHTML='<div class=\'book-focus-cover-placeholder\' style=\'background:${book.coverBg || '#4a3b2c'};\' ><span style=\'color:${book.coverText || '#f4efe6'};\' >${book.title}</span></div>'; this.parentElement.style.background='${book.coverBg || '#4a3b2c'}';" />`;
+    coverEl.style.background = '';
   } else {
-    coverFloat.innerHTML = `<div class="book-focus-cover-placeholder" style="background:${book.coverBg};"><span style="color:${book.coverText};">${book.title}</span></div>`;
-    coverFloat.style.background = book.coverBg;
+    coverEl.innerHTML = `<div class="book-focus-cover-placeholder" style="background:${book.coverBg || '#4a3b2c'};"><span style="color:${book.coverText || '#f4efe6'};">${book.title}</span></div>`;
+    coverEl.style.background = book.coverBg || '#4a3b2c';
+  }
+
+  // Populate Ex Libris Owner Branding
+  const ownerName = (currentUser && currentUser.name) ? currentUser.name : "Nana Adjoa";
+  const nameParts = ownerName.trim().split(/\s+/);
+  let monogram = "N · A";
+  if (nameParts.length >= 2) {
+    monogram = `${nameParts[0][0].toUpperCase()} · ${nameParts[nameParts.length - 1][0].toUpperCase()}`;
+  } else if (nameParts.length === 1 && nameParts[0]) {
+    monogram = nameParts[0][0].toUpperCase();
+  }
+  const monogramEl = document.getElementById('focus-monogram');
+  const ownerNameEl = document.getElementById('focus-owner-name');
+  if (monogramEl) monogramEl.textContent = monogram;
+  if (ownerNameEl) ownerNameEl.textContent = ownerName;
+
+  // Header Badge
+  const badgeEl = document.getElementById('focus-badge');
+  if (badgeEl) {
+    if (book.rating === 5) {
+      badgeEl.textContent = 'A FIVE-STAR FAVORITE';
+    } else if (book.rating >= 4) {
+      badgeEl.textContent = 'HIGHLY RECOMMENDED';
+    } else {
+      badgeEl.textContent = (book.shelf || 'FEATURED SELECTION').toUpperCase();
+    }
   }
 
   document.getElementById('focus-title').textContent = book.title;
-  document.getElementById('focus-author').textContent = book.author;
-  document.getElementById('focus-shelf').textContent = book.shelf;
+  document.getElementById('focus-author').textContent = book.author || 'Unknown Author';
 
+  // Ratings
   const starsEl = document.getElementById('focus-stars');
   starsEl.innerHTML = '';
+  const ratingVal = book.rating || 5;
   for (let i = 1; i <= 5; i++) {
     const s = document.createElement('span');
     s.textContent = '★';
-    if (i <= book.rating) s.classList.add('lit');
+    if (i <= ratingVal) s.classList.add('lit');
     starsEl.appendChild(s);
   }
 
+  const ratingValEl = document.getElementById('focus-rating-val');
+  if (ratingValEl) ratingValEl.textContent = `${ratingVal} Star${ratingVal > 1 ? 's' : ''}`;
+
+  // Meta Grid
+  const statusEl = document.getElementById('focus-status');
+  const shelfEl = document.getElementById('focus-shelf');
+  if (statusEl) statusEl.textContent = book.shelf === 'To Read' ? 'To Read' : (book.shelf === 'Currently Reading' ? 'Reading' : 'Read');
+  if (shelfEl) shelfEl.textContent = book.shelf || 'Favorites';
+
+  // Notes
   const notesEl = document.getElementById('focus-notes');
   if (book.notes) {
     notesEl.textContent = '"' + book.notes + '"';
     notesEl.classList.remove('empty');
   } else {
-    notesEl.textContent = 'No notes added yet.';
+    notesEl.textContent = 'No personal notes added for this book yet.';
     notesEl.classList.add('empty');
   }
+
+  // External Links
+  const query = encodeURIComponent(`${book.title} ${book.author || ''}`);
+  const goodreadsLink = document.getElementById('focus-link-goodreads');
+  const amazonLink = document.getElementById('focus-link-amazon');
+  if (goodreadsLink) goodreadsLink.href = `https://www.goodreads.com/search?q=${query}`;
+  if (amazonLink) amazonLink.href = `https://www.amazon.com/s?k=${query}`;
 
   overlay.classList.add('open');
 }
 
 function closeFocus() {
   const overlay = document.getElementById('book-focus-overlay');
-  const coverFloat = document.getElementById('focus-cover');
   const card = document.getElementById('focus-card');
-  coverFloat.classList.add('closing');
-  card.classList.add('closing');
-  setTimeout(function () { overlay.classList.remove('open'); }, 300);
+  if (!overlay || !overlay.classList.contains('open')) return;
+  
+  if (card) card.classList.add('closing');
+  setTimeout(function () {
+    overlay.classList.remove('open');
+    if (card) card.classList.remove('closing');
+  }, 250);
 }
 
 function deleteFocusedBook() {
@@ -588,7 +634,13 @@ function deleteFocusedBook() {
 }
 
 document.getElementById('book-focus-overlay').addEventListener('click', function (e) {
-  if (e.target === this) closeFocus();
+  if (e.target === this || e.target.classList.contains('book-focus-container')) closeFocus();
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    closeFocus();
+  }
 });
 
 // ── ADD BOOK MODAL ──
