@@ -122,6 +122,15 @@ body.modal-open {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.google-signin-btn.gsi-rendered,
+.google-signin-btn.gsi-rendered:hover {
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  min-height: 44px;
+}
+
 .google-icon {
   width: 20px;
   height: 20px;

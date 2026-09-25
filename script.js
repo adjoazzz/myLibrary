@@ -101,7 +101,7 @@ async function onGoogleSignIn(response) {
 
     if (error) {
       console.error('Supabase sign-in error:', error);
-      showToast('Sign in failed. Please try again.');
+      showToast('Sign in failed: ' + (error.message || 'please try again.'));
       return;
     }
 
@@ -129,23 +129,48 @@ async function onGoogleSignIn(response) {
 
 let googleSignInReady = false;
 
+// Renders Google's own sign-in button into #google-signin-btn. We don't rely on
+// google.accounts.id.prompt() (One Tap): Google silently suppresses it after it
+// has been dismissed and in browsers that block third-party cookies, which left
+// the "Continue with Google" button doing nothing.
 function initializeGoogleSignIn() {
-  if (window.google && google.accounts && google.accounts.id) {
-    google.accounts.id.initialize({
-      client_id: '684826739629-p96i1jgjelionebkggt1s733pd239894.apps.googleusercontent.com',
-      callback: onGoogleSignIn,
+  if (googleSignInReady) return true;
+  if (!(window.google && google.accounts && google.accounts.id)) return false;
+
+  google.accounts.id.initialize({
+    client_id: '684826739629-p96i1jgjelionebkggt1s733pd239894.apps.googleusercontent.com',
+    callback: onGoogleSignIn,
+  });
+
+  const googleBtn = document.getElementById('google-signin-btn');
+  if (googleBtn) {
+    googleBtn.innerHTML = '';
+    googleBtn.classList.add('gsi-rendered');
+    google.accounts.id.renderButton(googleBtn, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      logo_alignment: 'center',
+      width: Math.min(400, Math.max(200, googleBtn.offsetWidth || 320)),
     });
-    googleSignInReady = true;
-    return true;
   }
-  googleSignInReady = false;
-  return false;
+
+  googleSignInReady = true;
+  return true;
+}
+
+// The Google script loads async, so keep trying for a few seconds if it isn't there yet.
+function waitForGoogleSignIn(attemptsLeft) {
+  if (initializeGoogleSignIn() || attemptsLeft <= 0) return;
+  setTimeout(function () { waitForGoogleSignIn(attemptsLeft - 1); }, 250);
 }
 
 // Initialize Google Sign-In button
 window.addEventListener('load', function () {
   const googleBtn = document.getElementById('google-signin-btn');
-  initializeGoogleSignIn();
+  waitForGoogleSignIn(40);
 
   if (googleBtn) {
     googleBtn.addEventListener('click', function () {
@@ -156,9 +181,7 @@ window.addEventListener('load', function () {
       }
       if (!googleSignInReady) {
         showToast('Google sign-in is not ready yet. Refresh and try again.');
-        return;
       }
-      google.accounts.id.prompt();
     });
   }
 
