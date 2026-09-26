@@ -388,10 +388,16 @@ body.modal-open {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
-  gap: 8px 5px;
+  gap: 18px 5px;
   align-items: flex-end;
-  padding: 14px 14px 10px;
-  background: linear-gradient(180deg, rgba(232,226,216,0.96), rgba(232,226,216,0.85));
+  padding: 14px 14px 0;
+  /* A wooden plank under every row of books (row = 130px spine + 18px row gap).
+     The last row sits on .shelf-wood instead. */
+  background:
+    linear-gradient(180deg, transparent 130px, #C8A970 130px, #B8965A 136px, transparent 136px) 0 14px / 100% 148px repeat-y,
+    linear-gradient(180deg, rgba(232,226,216,0.96), rgba(232,226,216,0.85));
+  /* clip the plank layer to the rows so no plank shows above the first row */
+  background-clip: content-box, padding-box;
   border-radius: 4px 4px 0 0;
   min-height: 150px;
   flex: 1;
@@ -455,16 +461,11 @@ body.modal-open {
   margin-bottom: 24px;
 }
 
-.shelf-row-line {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(72%, 220px);
-  height: 2px;
-  background: linear-gradient(90deg, rgba(184,150,90,0.15), #B8965A, rgba(184,150,90,0.15));
-  border-radius: 999px;
-  pointer-events: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+.share-local-note {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8A6D3B;
 }
 
 .shelf-decor-layer {
