@@ -51,7 +51,6 @@ async function initializeAuthState() {
       name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
       picture: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url || '',
     };
-    loadShelfDecorItems();
     await loadUserBooks(currentUser.id);
     renderGrid();
     renderShelves();
@@ -124,7 +123,6 @@ async function onGoogleSignIn(response) {
     };
 
     localStorage.setItem('myLibrary_user', JSON.stringify(currentUser));
-    loadShelfDecorItems();
     await loadUserBooks(currentUser.id);
     updatePageState();
     renderGrid();
@@ -197,15 +195,6 @@ window.addEventListener('load', function () {
   initializeAuthState();
   bindModalTriggers();
   bindAddBookButtons();
-  document.querySelectorAll('.modal-tab').forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      setModalTab(tab.dataset.modalTab);
-    });
-  });
-  const decorUploadInput = document.getElementById('item-upload-input');
-  if (decorUploadInput) {
-    decorUploadInput.addEventListener('change', handleDecorUpload);
-  }
   renderGrid();
   renderShelves();
   updateBookCount();
@@ -226,309 +215,6 @@ const books = [];
 
 // custom shelves created by user (beyond the built-in ones)
 const customShelves = [];
-const shelfDecorItems = [];
-const presetDecorItems = [
-  {
-    id: 'preset-plant',
-    name: 'Plant',
-    image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#d0d9b3"/><stop offset="1" stop-color="#7aa96f"/></linearGradient></defs><rect width="120" height="120" rx="18" fill="#f5efe6"/><rect x="44" y="18" width="32" height="56" rx="10" fill="#9a7a4f"/><path d="M33 66c20-16 40-16 54 0v14c-19 12-35 12-54 0V66Z" fill="url(#g1)"/><path d="M35 42c-10 8-14 18-14 28 18-2 28-13 28-28Z" fill="#80a77d"/><path d="M85 42c10 8 14 18 14 28-18-2-28-13-28-28Z" fill="#80a77d"/><path d="M60 34c8 8 12 20 12 32-8 4-16 4-24 0 0-12 4-24 12-32Z" fill="#8abf8a"/><rect x="52" y="76" width="16" height="18" rx="5" fill="#7a5b39"/></svg>'),
-    width: 54,
-    height: 66,
-  },
-  {
-    id: 'preset-vase',
-    name: 'Vase',
-    image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="18" fill="#f5efe6"/><path d="M39 26h42l-10 30c-2 8-4 12-11 15-8-3-10-7-12-15L39 26Z" fill="#d9c7a5"/><path d="M39 26h42v8H39z" fill="#b99c75"/><path d="M48 56h24v34c0 11-6 18-12 18s-12-7-12-18V56Z" fill="#e9ddc5"/><path d="M47 83c4 7 8 11 13 11s9-4 13-11" stroke="#c5b395" stroke-width="3" fill="none"/></svg>'),
-    width: 48,
-    height: 76,
-  },
-  {
-    id: 'preset-candle',
-    name: 'Candle',
-    image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="18" fill="#f5efe6"/><rect x="42" y="22" width="36" height="18" rx="8" fill="#d8a86e"/><rect x="46" y="40" width="28" height="42" rx="8" fill="#f4d79d"/><rect x="52" y="82" width="16" height="16" rx="4" fill="#bf8a5f"/><circle cx="60" cy="28" r="8" fill="#f7ddb0"/><path d="M60 12v10" stroke="#c0814a" stroke-width="4" stroke-linecap="round"/></svg>'),
-    width: 44,
-    height: 68,
-  },
-  {
-    id: 'preset-frame',
-    name: 'Frame',
-    image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="18" fill="#f5efe6"/><rect x="22" y="24" width="76" height="72" rx="10" fill="#e8d9b6" stroke="#b89e73" stroke-width="4"/><rect x="30" y="32" width="60" height="56" rx="8" fill="#dfbf9d"/><path d="M38 80c10-18 22-28 44-30" stroke="#a76542" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M38 52c10 10 16 16 24 20" stroke="#9b5634" stroke-width="4" fill="none" stroke-linecap="round"/></svg>'),
-    width: 60,
-    height: 72,
-  },
-  {
-    id: 'preset-lamp',
-    name: 'Lamp',
-    image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="18" fill="#f5efe6"/><path d="M38 62h44l-7 26H45L38 62Z" fill="#cba77a"/><path d="M52 42h16l8 20H44l8-20Z" fill="#d2b18a"/><rect x="40" y="82" width="40" height="12" rx="5" fill="#99734d"/><path d="M58 20v22" stroke="#8e6745" stroke-width="5" stroke-linecap="round"/><circle cx="60" cy="18" r="8" fill="#f7e6bb"/></svg>'),
-    width: 54,
-    height: 74,
-  },
-];
-let activeModalTab = 'books';
-
-function getShelfDecorStorageKey() {
-  return `myLibrary_shelf_decor_${currentUser ? currentUser.id : 'guest'}`;
-}
-
-function loadShelfDecorItems() {
-  shelfDecorItems.length = 0;
-  if (!currentUser) return;
-
-  try {
-    const stored = localStorage.getItem(getShelfDecorStorageKey());
-    if (!stored) return;
-    const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed)) {
-      parsed.forEach(function (item) {
-        if (item && item.image) {
-          shelfDecorItems.push(item);
-        }
-      });
-    }
-  } catch (e) {
-    console.error('Error loading shelf decor items:', e);
-  }
-}
-
-function saveShelfDecorItems() {
-  if (!currentUser) return;
-  localStorage.setItem(getShelfDecorStorageKey(), JSON.stringify(shelfDecorItems));
-}
-
-function getPrimaryShelfName() {
-  if (activeFilter) return activeFilter;
-  const seen = new Set();
-  books.forEach(function (book) {
-    if (book.shelf) seen.add(book.shelf);
-  });
-  return seen.values().next().value || 'Fiction';
-}
-
-function setModalTab(tabName) {
-  activeModalTab = tabName;
-
-  document.querySelectorAll('.modal-tab').forEach(function (btn) {
-    btn.classList.toggle('active', btn.dataset.modalTab === tabName);
-  });
-
-  const booksPanel = document.getElementById('modal-books-panel');
-  const itemsPanel = document.getElementById('modal-items-panel');
-
-  if (booksPanel) {
-    booksPanel.style.display = tabName === 'books' ? 'block' : 'none';
-  }
-
-  if (itemsPanel) {
-    itemsPanel.style.display = tabName === 'items' ? 'block' : 'none';
-  }
-
-  if (tabName === 'items') {
-    renderDecorGallery();
-  }
-}
-
-function createDecorEntry(sourceItem, shelfName) {
-  return {
-    id: sourceItem.id + '-' + Date.now() + '-' + Math.random().toString(16).slice(2),
-    name: sourceItem.name,
-    image: sourceItem.image,
-    shelf: shelfName,
-    x: 18,
-    y: 18,
-    width: sourceItem.width || 54,
-    height: sourceItem.height || 54,
-  };
-}
-
-function renderDecorGallery() {
-  const gallery = document.getElementById('items-gallery');
-  if (!gallery) return;
-
-  const uploaded = shelfDecorItems.filter(function (item) {
-    return !item.shelf || item.shelf === '__library__';
-  });
-  const items = [...presetDecorItems, ...uploaded];
-
-  if (items.length === 0) {
-    gallery.innerHTML = '<div class="items-empty-state">Upload a few favorite shelf pieces and drag them onto your library.</div>';
-    return;
-  }
-
-  gallery.innerHTML = '';
-  items.forEach(function (item) {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'shelf-decor-card';
-    card.innerHTML = `
-      <img src="${item.image}" alt="${item.name}" />
-      <span>${item.name}</span>
-    `;
-    card.addEventListener('click', function () {
-      const targetShelf = getPrimaryShelfName();
-      const isPreset = item.id && item.id.startsWith('preset-');
-      const existing = isPreset ? null : shelfDecorItems.find(function (entry) {
-        return entry.id === item.id;
-      });
-
-      if (existing) {
-        existing.shelf = targetShelf;
-        existing.x = existing.x || 18;
-        existing.y = existing.y || 18;
-      } else {
-        const entry = createDecorEntry(item, targetShelf);
-        shelfDecorItems.push(entry);
-      }
-
-      saveShelfDecorItems();
-      closeModal();
-      setView('shelf', document.getElementById('btn-shelf'));
-      renderShelves();
-      showToast(`Placed ${item.name} on ${targetShelf}`);
-    });
-    gallery.appendChild(card);
-  });
-}
-
-function handleDecorUpload(event) {
-  const files = Array.from(event.target.files || []);
-  if (!files.length) return;
-
-  files.forEach(function (file) {
-    if (!file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const item = {
-        id: Date.now() + '-' + Math.random().toString(16).slice(2),
-        name: file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ') || 'Shelf item',
-        image: e.target.result,
-        shelf: '__library__',
-        x: 16,
-        y: 18,
-      };
-
-      shelfDecorItems.push(item);
-      saveShelfDecorItems();
-      renderDecorGallery();
-    };
-    reader.readAsDataURL(file);
-  });
-
-  event.target.value = '';
-}
-
-function renderShelfDecorLayer(shelfEl, shelfName) {
-  if (!shelfEl) return;
-
-  const layer = document.createElement('div');
-  layer.className = 'shelf-decor-layer';
-
-  const items = shelfDecorItems.filter(function (item) {
-    return item.shelf === shelfName;
-  });
-
-  items.forEach(function (item) {
-    const decor = document.createElement('div');
-    decor.className = 'shelf-decor-item';
-    decor.style.left = (item.x || 18) + 'px';
-    decor.style.top = (item.y || 18) + 'px';
-    decor.style.width = (item.width || 54) + 'px';
-    decor.style.height = (item.height || 54) + 'px';
-
-    const img = document.createElement('img');
-    img.src = item.image;
-    img.alt = item.name;
-    decor.appendChild(img);
-
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'shelf-decor-remove';
-    removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const idx = shelfDecorItems.findIndex(function (entry) { return entry.id === item.id; });
-      if (idx !== -1) {
-        shelfDecorItems.splice(idx, 1);
-        saveShelfDecorItems();
-        renderShelves();
-      }
-    });
-    decor.appendChild(removeBtn);
-
-    const resizeHandle = document.createElement('div');
-    resizeHandle.className = 'shelf-decor-resize';
-    resizeHandle.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startWidth = Number(item.width || 54);
-      const startHeight = Number(item.height || 54);
-
-      function onMove(moveEvent) {
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
-        const nextWidth = Math.min(Math.max(startWidth + dx, 32), Math.max(32, shelfEl.clientWidth - (item.x || 18) - 12));
-        const nextHeight = Math.min(Math.max(startHeight + dy, 32), Math.max(32, shelfEl.clientHeight - (item.y || 18) - 12));
-        item.width = nextWidth;
-        item.height = nextHeight;
-        decor.style.width = nextWidth + 'px';
-        decor.style.height = nextHeight + 'px';
-      }
-
-      function onUp() {
-        saveShelfDecorItems();
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-      }
-
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-    });
-    decor.appendChild(resizeHandle);
-
-    decor.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.shelf-decor-remove') || e.target.closest('.shelf-decor-resize')) {
-        return;
-      }
-
-      if (e.button && e.button !== 0) return;
-      e.preventDefault();
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startLeft = Number(item.x || 18);
-      const startTop = Number(item.y || 18);
-
-      function onMove(moveEvent) {
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
-        const maxX = Math.max(0, shelfEl.clientWidth - decor.offsetWidth - 10);
-        const maxY = Math.max(0, shelfEl.clientHeight - decor.offsetHeight - 10);
-        item.x = Math.min(Math.max(0, startLeft + dx), maxX);
-        item.y = Math.min(Math.max(0, startTop + dy), maxY);
-        decor.style.left = item.x + 'px';
-        decor.style.top = item.y + 'px';
-      }
-
-      function onUp() {
-        saveShelfDecorItems();
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-      }
-
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-    });
-
-    layer.appendChild(decor);
-  });
-
-  shelfEl.appendChild(layer);
-}
-
 // ── SAFE MARKUP HELPERS ──
 // Book titles/authors can come from Google Books or a share link, so never put
 // them into HTML unescaped.
@@ -742,67 +428,6 @@ function applyCustomBookOrder() {
 // ── SPINE COLOR EXTRACTION ──
 const spineColorCache = {}; // keyed by cover URL -> { bg, text }
 
-// function getSpineTilt(book) {
-//   const str = String(book.id || book.title || '');
-//   let hash = 0;
-//   for (let i = 0; i < str.length; i++) {
-//     hash = (hash * 31 + str.charCodeAt(i)) | 0;
-//   }
-//   const rand = Math.abs(hash) % 100;
-
-//   if (rand < 60) return 0;
-
-//   const tiltPool = [-6, -4, -3, 3, 4, 6];
-//   return tiltPool[Math.abs(hash) % tiltPool.length];
-// }
-
-// function applySpineTilt(spineEl, book) {
-//   const tilt = getSpineTilt(book);
-//   spineEl.style.setProperty('--tilt', tilt + 'deg');
-
-//   if (tilt !== 0) {
-//     const spineHeight = 130; // must match .spine height in CSS
-//     const radians = Math.abs(tilt) * Math.PI / 180;
-//     const shift = Math.round(spineHeight * Math.sin(radians)) + 4; // +4px buffer
-
-//     if (tilt > 0) {
-//       spineEl.style.marginRight = shift + 'px';
-//     } else {
-//       spineEl.style.marginLeft = shift + 'px';
-//     }
-//   }
-// }
-
-// Most books stand upright; a few lean. A leaning book gets extra margin on the
-// side it leans towards so it rests against its neighbour instead of covering it.
-const SPINE_HEIGHT = 130; // must match .spine height in CSS
-
-function getSpineTilt(book) {
-  const source = String(book.id || book.title || '');
-  let hash = 0;
-  for (let i = 0; i < source.length; i++) {
-    hash = (hash * 31 + source.charCodeAt(i)) | 0;
-  }
-  const rand = Math.abs(hash) % 100;
-  if (rand < 75) return 0;
-  const tiltPool = [-5, -4, -3, 3, 4, 5];
-  return tiltPool[rand % tiltPool.length];
-}
-
-function applySpineTilt(spineEl, book) {
-  if (!spineEl) return;
-  const tilt = getSpineTilt(book);
-  spineEl.style.setProperty('--tilt', tilt + 'deg');
-  if (tilt === 0) return;
-
-  const shift = Math.ceil(SPINE_HEIGHT * Math.sin(Math.abs(tilt) * Math.PI / 180));
-  if (tilt > 0) {
-    spineEl.style.marginRight = shift + 'px';
-  } else {
-    spineEl.style.marginLeft = shift + 'px';
-  }
-}
-
 function getReadableTextColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -819,6 +444,55 @@ function applySpineColor(spineEl, color) {
   placeholder.style.setProperty('--spine-text', color.text);
 }
 
+// Picks the cover's main colour rather than averaging every pixel (averaging a
+// cover with lots of white and one bold colour gives a washed-out pastel).
+// Pixels are grouped into coarse colour buckets; the biggest bucket wins, with
+// colourful buckets counting extra so a strong title colour beats a plain background.
+function pickSpineColor(img) {
+  const size = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, size, size);
+  const data = ctx.getImageData(0, 0, size, size).data;
+
+  const buckets = {};
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 200) continue; // skip transparent pixels
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const key = (r >> 5) + ',' + (g >> 5) + ',' + (b >> 5);
+    const bucket = buckets[key] || (buckets[key] = { r: 0, g: 0, b: 0, count: 0 });
+    bucket.r += r;
+    bucket.g += g;
+    bucket.b += b;
+    bucket.count++;
+  }
+
+  let best = null;
+  let bestScore = 0;
+  Object.keys(buckets).forEach(function (key) {
+    const bucket = buckets[key];
+    const r = bucket.r / bucket.count, g = bucket.g / bucket.count, b = bucket.b / bucket.count;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const saturation = max === 0 ? 0 : (max - min) / max;
+    const score = bucket.count * (0.2 + saturation * 2);
+    if (score > bestScore) {
+      bestScore = score;
+      best = [r, g, b];
+    }
+  });
+  if (!best) return null;
+
+  // Very pale colours read as blank spines; deepen them a little.
+  const lightness = (Math.max.apply(null, best) + Math.min.apply(null, best)) / 2 / 255;
+  if (lightness > 0.75) {
+    const factor = 0.75 / lightness;
+    best = best.map(v => v * factor);
+  }
+  return '#' + best.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+}
+
 function extractSpineColor(book, spineEl) {
   if (!book.cover) return;
 
@@ -833,35 +507,13 @@ function extractSpineColor(book, spineEl) {
 
   img.onload = function () {
     try {
-      const size = 20;
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, size, size);
-      const data = ctx.getImageData(0, 0, size, size).data;
-
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] < 200) continue; // skip transparent pixels
-        r += data[i];
-        g += data[i + 1];
-        b += data[i + 2];
-        count++;
-      }
-      if (count === 0) return; // nothing usable — keep gray fallback
-
-      r = Math.round(r / count);
-      g = Math.round(g / count);
-      b = Math.round(b / count);
-      const bg = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-      const text = getReadableTextColor(bg);
-
-      const result = { bg, text };
+      const color = pickSpineColor(img);
+      if (!color) return; // nothing usable — keep fallback colour
+      const result = { bg: color, text: getReadableTextColor(color) };
       spineColorCache[book.cover] = result;
       applySpineColor(spineEl, result);
     } catch (e) {
-      // canvas got tainted (no CORS) — keep gray fallback
+      // canvas got tainted (no CORS) — keep fallback colour
     }
   };
 
@@ -881,7 +533,6 @@ function createSpine(book) {
   const initialBg = cached ? cached.bg : book.coverBg;
   const initialText = cached ? cached.text : book.coverText;
   spine.innerHTML = `<div class="spine-placeholder" style="--spine-bg:${escapeHtml(initialBg)}; --spine-text:${escapeHtml(initialText)};"><span>${escapeHtml(book.title)}</span></div>`;
-  applySpineTilt(spine, book);
   spine.addEventListener('click', function () { openFocus(book); });
 
   if (book.cover && !cached) {
@@ -917,7 +568,6 @@ function renderShelves() {
       shelfEl.appendChild(createSpine(book));
     });
 
-    renderShelfDecorLayer(shelfEl, name);
   });
 }
 
@@ -1061,7 +711,6 @@ function openModal() {
 
   document.body.classList.add('modal-open');
   modal.classList.add('open');
-  setModalTab('books');
   searchView.style.display = 'flex';
   detailView.style.display = 'none';
   searchInput.value = '';
@@ -1078,7 +727,6 @@ function closeModal() {
   selectedBook = null;
   editMode = false;
   editingBook = null;
-  setModalTab('books');
 }
 
 function bindModalTriggers() {
@@ -1862,7 +1510,6 @@ function renderFilteredView(shelf) {
     shelfBooks.appendChild(createSpine(book));
   });
 
- renderShelfDecorLayer(shelfBooks, shelf);
   unit.appendChild(shelfBooks);
   const wood = document.createElement('div');
   wood.className = 'shelf-wood';

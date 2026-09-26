@@ -161,11 +161,6 @@
   <!-- ADD BOOK MODAL -->
   <div class="modal-overlay" id="add-book-modal">
     <div class="modal">
-      <div class="modal-tab-bar">
-        <button class="modal-tab active" data-modal-tab="books">Books</button>
-        <button class="modal-tab" data-modal-tab="items">Items</button>
-      </div>
-
       <div id="modal-books-panel" class="modal-panel active">
         <!-- SEARCH VIEW -->
         <div id="modal-search-view" class="modal-search-view">
@@ -232,22 +227,6 @@
         </div>
       </div>
 
-      <div id="modal-items-panel" class="modal-panel" style="display:none;">
-        <div class="modal-header">
-          <div class="modal-title">Shelf items</div>
-          <button class="modal-close" onclick="closeModal()">✕</button>
-        </div>
-        <div class="modal-items-body">
-          <div class="items-upload-row">
-            <label class="upload-item-button" for="item-upload-input">Upload images</label>
-            <input id="item-upload-input" type="file" accept="image/*" multiple />
-          </div>
-          <div class="items-gallery" id="items-gallery"></div>
-        </div>
-        <div class="modal-search-footer">
-          <button class="btn-add-details enabled" onclick="closeModal()">Done</button>
-        </div>
-      </div>
     </div>
   </div>
 
